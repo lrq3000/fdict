@@ -1,0 +1,9 @@
+# Misc
+include .coveragerc
+include LICENCE
+include Makefile
+include README.rst
+include tox.ini
+
+# Test suite
+recursive-include fdict/tests *.py

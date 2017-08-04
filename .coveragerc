@@ -1,0 +1,6 @@
+[run]
+branch = True
+omit =
+    fdict/tests/*
+[report]
+show_missing = True
