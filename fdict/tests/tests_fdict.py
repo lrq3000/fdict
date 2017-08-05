@@ -451,16 +451,16 @@ def test_fdict_viewvalues():
     assert set(a['a'].values()) == set([1, 2, 4])
     # test with fastview mode and nodes=True
     v1 = a.values(nodes=True)
-    assert {'a/e/f'} in v1 and {'a/b', 'a/c', 'a/e/'} in v1
+    assert set(['a/e/f']) in v1 and set(['a/b', 'a/c', 'a/e/']) in v1
     v2 = a['a'].values(nodes=True)
-    assert {'e/f'} in v2
+    assert set(['e/f']) in v2
 
 def test_fdict_view_override_rootpath():
     '''Test fdict view* override rootpath'''
     a = fdict({'a': {'b': 1, 'c': 2, 'e': {'f': 4}}, 'd': 3}, fastview=True)
-    assert a.values(rootpath='a/e') == [4]
-    assert a.keys(rootpath='a/e') == ['f']
-    assert a.items(rootpath='a/e')) == [('f', 4)]
+    assert list(a.values(rootpath='a/e')) == [4]
+    assert list(a.keys(rootpath='a/e')) == ['f']
+    assert list(a.items(rootpath='a/e')) == [('f', 4)]
 
 def test_sfdict_basic():
     '''sfdict: basic tests'''
