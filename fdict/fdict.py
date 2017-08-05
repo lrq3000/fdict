@@ -504,32 +504,36 @@ class fdict(dict):
             return self._count_iter_items(self.viewkeys())
 
     def __eq__(self, d2):
-        is_d2fdict = isinstance(d2, self.__class__)
-        if is_d2fdict and not self.rootpath:
-            # fdict, we can directly compare
-            return (self.d == d2.d)
+        is_fdict = isinstance(d2, self.__class__)
+        is_dict = isinstance(d2, dict)
+        if not is_dict:
+            return False
         else:
-            kwargs = {}
-            if is_d2fdict:
-                if len(self) != len(d2):
-                    # If size is different then the dicts are different
-                    # Note that we need to compare the items because we need to filter if we are looking at nested keys (ie, if there is a rootpath)
-                    return False
-                else:
-                    kwargs['fullpath'] = False
-            elif isinstance(d2, dict): # normal dict, need to flatten it first
-                d2 = self.__class__.flatkeys(d2, sep=self.delimiter)
-                if len(self) != len(d2):
-                    return False
+            if is_fdict and not self.rootpath:
+                # fdict, we can directly compare
+                return (self.d == d2.d)
+            else:
+                kwargs = {}
+                if is_fdict:
+                    if len(self) != len(d2):
+                        # If size is different then the dicts are different
+                        # Note that we need to compare the items because we need to filter if we are looking at nested keys (ie, if there is a rootpath)
+                        return False
+                    else:
+                        kwargs['fullpath'] = False
+                elif is_dict: # normal dict, need to flatten it first
+                    d2 = self.__class__.flatkeys(d2, sep=self.delimiter)
+                    if len(self) != len(d2):
+                        return False
 
-            # Else size is the same, check each item if they are equal
-            # TOREMOVE COMMENT: There is a rootpath, this is a subdict, so we have to filter the items we compare (else we will compare the full dict to d2, which is probably not what the user wants if he does d['item1'] == d2)
-            d2items = self._genericitems(d2, **kwargs)
-            for k, v in d2items:
-                fullkey = self._build_path(k)
-                if not fullkey in self.d or self.d.__getitem__(fullkey) != v:
-                    return False
-            return True
+                # Else size is the same, check each item if they are equal
+                # TOREMOVE COMMENT: There is a rootpath, this is a subdict, so we have to filter the items we compare (else we will compare the full dict to d2, which is probably not what the user wants if he does d['item1'] == d2)
+                d2items = self._genericitems(d2, **kwargs)
+                for k, v in d2items:
+                    fullkey = self._build_path(k)
+                    if not fullkey in self.d or self.d.__getitem__(fullkey) != v:
+                        return False
+                return True
 
     def __repr__(self):
         # Filter the items if there is a rootpath and return as a new fdict
@@ -605,12 +609,17 @@ class sfdict(fdict):
             os.remove(self.filename)
 
         if 'autosync' in kwargs:
-            # Autosync changes back to the db file? By default true.
+            # Autosync changes back to the db file? By default false because it would be inefficient.
             self.autosync = kwargs['autosync']
-            #del kwargs['autosync']
         else:
-            self.autosync = True
-        
+            self.autosync = False
+
+        if 'writeback' in kwargs:
+            # Writeback allows to monitor nested objects changes, such as list.append(), without writeback all changes must be done by direct assignment: tmp = a['a'], tmp.append(3), a['a'] = tmp
+            self.writeback = kwargs['writeback']
+        else:
+            self.writeback = True
+
         if 'forcedumbdbm' in kwargs:
             # Force the use of dumbdbm, a generic implementation available on all platforms (but slow)?
             self.forcedumbdbm = kwargs['forcedumbdbm']
@@ -625,7 +634,7 @@ class sfdict(fdict):
             if self.forcedumbdbm:
                 # Force the use of dumb dbm even if slower
                 raise ImportError('pass')
-            d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
+            d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
         except (ImportError, IOError) as exc:
             if 'pass' in str(exc).lower() or '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
                 # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
@@ -636,7 +645,7 @@ class sfdict(fdict):
                     import dumbdbm
                     db = dumbdbm.open(self.filename, 'c')
                 # Open the dumb db as a shelf
-                d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
+                d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
             else:  # pragma: no cover
                 raise
 
@@ -652,15 +661,18 @@ class sfdict(fdict):
     def __setitem__(self, key, value):
         super(self.__class__, self).__setitem__(key, value)
         if self.autosync:
+            # Commit pending changes everytime we set an item
             self.sync()
 
     def get_filename(self):
         return self.filename
 
     def sync(self):
+        '''Commit pending changes to file'''
         self.d.sync()
 
     def close(self, delete=False):
+        '''Commit pending changes to file and close it'''
         self.d.close()
         if delete:
             try:

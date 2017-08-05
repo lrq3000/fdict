@@ -16,7 +16,15 @@ def test_fdict_basic():
 
     assert list(a.keys()) == ['c/b']
     assert dict(a.items()) == dict([('c/b', set([1, 2]))])
-    
+
+    # Test equality
+    assert a == {'c/b': set([1, 2])} and a == {'c': {'b': set([1, 2])}}  # equality dict
+    assert a['c/b'] == set([1, 2])  # leaf direct access
+    assert a['c']['b'] == set([1, 2])  # leaf indirect access
+    assert a['c'] == {'b': set([1, 2])}  # node
+    assert a['c/d'] == {}  # inexistent node
+    assert (a['c/d'] == 1) == False  # inexistent node and wrong type
+
     # Test getitem
     assert a['c']['b'] == a['c/b'] == set([1, 2])  # leaf
     assert dict(a['c'].items()) == {'b': set([1, 2])}  # node
@@ -355,3 +363,32 @@ def test_sfdict_forcedbm_filename():
     j = sfdict(forcedumbdbm=True)
     assert len(j.get_filename()) > 0
     j.close(delete=True)
+
+def test_sfdict_autosync():
+    '''Test sfdict autosync'''
+    # With autosync, updating a nested object is saved to disk
+    g = sfdict(d={'a': {'b': set([1, 2])}}, autosync=True)
+    g['a']['b'].add(3)
+    assert g['a/b'] == set([1, 2, 3])
+    g['d'] = 4  # trigger the autosync on setitem
+    filename = g.get_filename()
+    # try to access the same shelve before closing/syncing it
+    h = sfdict(filename=filename)
+    assert h['a/b'] == set([1, 2, 3])
+    assert (h['a/b/c'] == 3) == False
+    g.close()
+    h.close()
+    # Without autosync, the change is lost
+    g = sfdict(d={'a': {'b': set([1, 2])}}, autosync=False)
+    g['a']['b'].add(3)
+    assert g['a/b'] == set([1, 2, 3])
+    g['d'] = 4
+    filename = g.get_filename()
+    h = sfdict(filename=filename)
+    assert h['a/b'] == {}  # not synced, h has nothing
+    h.close()
+    g.sync()
+    h = sfdict(filename=filename)  # reopen after syncing g
+    assert h == {'a/b': set([1, 2, 3]), 'd': 4}
+    g.close()
+    h.close()
