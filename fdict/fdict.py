@@ -181,40 +181,24 @@ class fdict(dict):
     def _build_metadata(self, fullkeys):
         '''Build metadata to make viewitem and other methods using item resolution faster.
         Provided a list of full keys, this method will build parent nodes to point all the way down to the leaves.
-        Only for fastview and fastview2 modes.'''
+        Only for fastview modes.'''
 
-        if self.fastview:
-            for fullkey in fullkeys:
-                if not fullkey.endswith(self.delimiter):
-                    # Fastview mode: create additional entries for each parent at every depths of the current leaf
-                    parents = self._get_all_parent_nodes(fullkey, self.delimiter)
+        for fullkey in fullkeys:
+            if not fullkey.endswith(self.delimiter):
+                # Fastview mode: create additional entries for each parent at every depths of the current leaf
+                parents = self._get_all_parent_nodes(fullkey, self.delimiter)
 
-                    # First parent stores the direct path to the leaf
-                    # Then we recursively add the path to the nested parent in all super parents.
-                    lastparent = fullkey
-                    for parent in parents:
-                        if parent in self.d:
-                            # There is already a parent entry, we add to the set
-                            self.d.__getitem__(parent).add(lastparent)
-                        else:
-                            # Else we create a set and add this child
-                            self.d.__setitem__(parent, set([lastparent]))
-                        lastparent = parent
-        else:
-            # No fastview: we still build a parent node with a counter, so we know the number of items below
-            # Each node will contain an integer, the number of direct descendant nodes and/or leaves
-            # Create an empty entry for the parent element, so that we can quickly know if there are children for this key
-            # Format is d['item1/'], with the ending delimiter
-            for fullkey in fullkeys:
-                if not fullkey.endswith(self.delimiter):
-                    # Get list of parent nodes
-                    parents = self._get_all_parent_nodes(fullkey, self.delimiter)
-                    # All nodes will store the total number of subelements at any level, this is because if we store only direct descendants only then x['a/b/d'] and x['a/b/e'] will produce x['a/'] == 1 and that is wrong because then we cannot know how to decrement x['a/'] and when we can delete it.
-                    for parent in parents:
-                        if parent in self.d:
-                            self.d[parent] += 1
-                        else:
-                            self.d.__setitem__(parent, 1)
+                # First parent stores the direct path to the leaf
+                # Then we recursively add the path to the nested parent in all super parents.
+                lastparent = fullkey
+                for parent in parents:
+                    if parent in self.d:
+                        # There is already a parent entry, we add to the set
+                        self.d.__getitem__(parent).add(lastparent)
+                    else:
+                        # Else we create a set and add this child
+                        self.d.__setitem__(parent, set([lastparent]))
+                    lastparent = parent
 
     def __getitem__(self, key):
         '''Get an item given the key. O(1) in any case: if the item is a leaf, direct access, else if it is a node, a new fdict will be returned with a different rootpath but sharing the same internal dict.'''
