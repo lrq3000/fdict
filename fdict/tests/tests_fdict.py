@@ -321,14 +321,21 @@ def test_sfdict_basic():
     assert len(m2['b']['d']) == len(m2['b/d']) == 2
     assert not hasattr(m2['g'], '__len__') and isinstance(m2['g'], int)
 
-def test_sfdict_filename():
-    '''Test sfdict get_filename()'''
+def test_sfdict_dictinit():
+    '''Test sfdict initialization with a dict'''
+    g = sfdict(d={'a': {'b': set([1, 2])}})
+    assert g == {'a/b': set([1, 2])}
+    g.close(delete=True)
+
+def test_sfdict_forcedbm_filename():
+    '''Test sfdict forcedbm=True and get_filename()'''
     g = sfdict(filename='testshelf2')
     assert g.get_filename() == 'testshelf2'
     g.close(delete=True)
     i = sfdict()
     assert len(i.get_filename()) > 0
     i.close(delete=True)
+    # Test forcedbm
     j = sfdict(forcedumbdbm=True)
     assert len(j.get_filename()) > 0
     j.close(delete=True)

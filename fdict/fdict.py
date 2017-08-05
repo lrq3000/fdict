@@ -619,12 +619,12 @@ class sfdict(fdict):
         # Initialize parent class
         super(self.__class__, self).__init__(*args, **kwargs)
 
-        # Replace internal dict with an out-of-core shelve
+        # Initialize the out-of-core shelve database file
         try:
             if self.forcedumbdbm:
                 # Force the use of dumb dbm even if slower
                 raise ImportError('pass')
-            self.d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
+            d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
         except (ImportError, IOError) as exc:
             if 'pass' in str(exc).lower() or '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
                 # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
@@ -635,9 +635,15 @@ class sfdict(fdict):
                     import dumbdbm
                     db = dumbdbm.open(self.filename, 'c')
                 # Open the dumb db as a shelf
-                self.d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
+                d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
             else:
                 raise
+
+        # Initialize the shelve with the internal dict preprocessed by the parent class fdict
+        d.update(self.d)
+        # Then update self.d to use the shelve instead
+        del self.d
+        self.d = d
 
         # Call compatibility layer
         self._viewkeys, self._viewvalues, self._viewitems = self._getitermethods(self.d)
