@@ -78,12 +78,12 @@ class fdict(dict):
                 # Else it is not an internal call, the user supplied a dict to initialize the fdict, we have to flatten its keys
                 self.d = self.flatkeys(d, sep=delimiter)
                 if self.fastview:
-                    self._build_metadata(list(self._generickeys(self.d)))
+                    self._build_metadata()
             else:
                 # Else the user supplied another type of object, we try to convert to a dict and flatten it
                 self.d = self.flatkeys(dict(d), sep=delimiter)
                 if self.fastview:
-                    self._build_metadata(list(self._generickeys(self.d)))
+                    self._build_metadata()
         else:
             # No dict supplied, create an empty dict
             self.d = dict()
@@ -181,10 +181,14 @@ class fdict(dict):
         '''Build full path of current key given the rootpath and optionally a prepend'''
         return (self.delimiter).join(filter(None, [prepend, self.rootpath, key]))
 
-    def _build_metadata(self, fullkeys):
+    def _build_metadata(self, fullkeys=None):
         '''Build metadata to make viewitem and other methods using item resolution faster.
         Provided a list of full keys, this method will build parent nodes to point all the way down to the leaves.
+        If no list is provided, metadata will be rebuilt for the whole dict.
         Only for fastview modes.'''
+
+        if fullkeys is None:
+            fullkeys = list(self._generickeys(self.d))  # need to make a copy else RuntimeError because dict size will change
 
         for fullkey in fullkeys:
             if not fullkey.endswith(self.delimiter):
@@ -394,7 +398,7 @@ class fdict(dict):
                             # Node, append all the subchildren to the stack
                             children.update(self.d.__getitem__(child))
                             if nodes:
-                                yield child[lpattern:], self.d.__getitem__(child)
+                                yield child[lpattern:], set([c[lpattern:] for c in self.d.__getitem__(child)])
                         else:
                             # Leaf, return the key and value
                             yield child[lpattern:], self.d.__getitem__(child)
@@ -429,7 +433,7 @@ class fdict(dict):
                             # Node, append all the subchildren to the stack
                             children.update(self.d.__getitem__(child))
                             if nodes:
-                                yield self.d.__getitem__(child)
+                                yield set([c[lpattern:] for c in self.d.__getitem__(child)])
                         else:
                             # Leaf, return the key and value
                             yield self.d.__getitem__(child)
@@ -508,6 +512,7 @@ class fdict(dict):
             return self._count_iter_items(self.viewkeys())
 
     def __eq__(self, d2):
+        # Note that if using fastmode and you want to compare an extract(), you cannot compare the nodes unless you fdict(d2)!
         is_fdict = isinstance(d2, self.__class__)
         is_dict = isinstance(d2, dict)
         if not is_dict:
@@ -539,19 +544,19 @@ class fdict(dict):
                         return False
                 return True
 
-    def __repr__(self):
+    def __repr__(self, nodes=True):
         # Filter the items if there is a rootpath and return as a new fdict
         if self.rootpath:
-            return repr(self.__class__(d=dict(self.items()), rootpath='', delimiter=self.delimiter, fastview=self.fastview, **self.kwargs))
+            return repr(dict(self.items(fullpath=False, nodes=nodes)))
         else:
             try:
                 return self.d.__repr__()
             except AttributeError:
                 return repr(dict(self.items()))
 
-    def __str__(self):
+    def __str__(self, nodes=True):
         if self.rootpath:
-            return str(self.__class__(d=dict(self.items()), rootpath='', delimiter=self.delimiter, fastview=self.fastview, **self.kwargs))
+            return str(dict(self.items(fullpath=False, nodes=nodes)))
         else:
             try:
                 return self.d.__str__()
@@ -568,9 +573,12 @@ class fdict(dict):
         And also for subdicts (like sfdict) which might store in a file, so we don't want to start mixing up different paths in the same file, but we would like to extract to a fdict with same parameters as the original, so keeping full path is the only way to do so coherently.
         '''
         if fullpath:
-            return self.__class__(d=self.items(fullpath=True), rootpath=self.rootpath, delimiter=self.delimiter, fastview=self.fastview, **self.kwargs)
+            d2 = self.__class__(d=self.items(fullpath=True, nodes=False), rootpath=self.rootpath, delimiter=self.delimiter, fastview=self.fastview, **self.kwargs)
         else:
-            return self.__class__(d=self.items(fullpath=False), rootpath='', delimiter=self.delimiter, fastview=self.fastview) # , **self.kwargs)  # if not fullpath for keys, then we do not propagate kwargs because it might implicate propagating filename saving and mixing up keys. For fdict, this does not make a difference, but it might for subclassed dicts. Override this function if you want to ensure that an extract has all same parameters as original when fullpath=False in your subclassed dict.
+            d2 = self.__class__(d=self.items(fullpath=False, nodes=False), rootpath='', delimiter=self.delimiter, fastview=self.fastview) # , **self.kwargs)  # if not fullpath for keys, then we do not propagate kwargs because it might implicate propagating filename saving and mixing up keys. For fdict, this does not make a difference, but it might for subclassed dicts. Override this function if you want to ensure that an extract has all same parameters as original when fullpath=False in your subclassed dict.
+        if d2.fastview:
+            d2._build_metadata()
+        return d2
 
     def to_dict_nested(self):
         '''Convert to a nested dict'''

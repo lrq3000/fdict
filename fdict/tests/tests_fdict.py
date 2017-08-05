@@ -1,5 +1,7 @@
 # Unit testing of fdict
 from fdict import fdict, sfdict
+
+import ast
 import sys
 
 def test_fdict_creation():
@@ -349,22 +351,36 @@ def test_fdict_init_tuples():
 
 def test_fdict_str_repr():
     '''Test fdict str and repr'''
-    a = fdict({'a': {'b': 1, 'c': set([1, 2])}})
-    try:
-        assert str(a) == repr(a) == "{'a/c': set([1, 2]), 'a/b': 1}"
-        assert str(a['a']) == repr(a['a']) == "{'c': set([1, 2]), 'b': 1}"
-    except AssertionError:
-        # In Py3, set() string representation becomes {}
-        assert str(a) == repr(a) == "{'a/c': {1, 2}, 'a/b': 1}"
-        assert str(a['a']) == repr(a['a']) == "{'c': {1, 2}, 'b': 1}"
+    def convert_sets_to_lists(d):
+        for k, v in d.items():
+            if isinstance(v, set):
+                d[k] = list(v)
+        return d
 
-    a = fdict({'a': {'b': 1, 'c': set([1, 2]), 'd': {'e': 1}}}, fastview=True)  # fastview mode
-    try:
-        assert str(a) == repr(a) == "{'a/d/': set(['a/d/e']), 'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/d/', 'a/c', 'a/b']), 'a/d/e': 1}"
-        assert str(a['a']) == repr(a['a']) == "{'d/': set(['d/e']), 'c': set([1, 2]), 'b': 1, 'd/e': 1}"
-    except AssertionError:
-        assert str(a) == repr(a) == "{'a/d/': {'a/d/e'}, 'a/c': {1, 2}, 'a/b': 1, 'a/': {'a/d/', 'a/c', 'a/b'}, 'a/d/e': 1}"
-        assert str(a['a']) == repr(a['a']) == "{'d/': {'d/e'}, 'c': {1, 2}, 'b': 1, 'd/e': 1}"
+    # No fastview
+    a = fdict({'a': {'b': 1, 'c': [1, 2]}})
+    assert ast.literal_eval(str(a)) == ast.literal_eval(repr(a)) == a.to_dict()
+    assert ast.literal_eval(str(a['a'])) == ast.literal_eval(repr(a['a'])) == a['a'].to_dict()
+
+    a = fdict({'a': {'b': 1, 'c': [1, 2], 'd': {'e': 1}}}, fastview=True)  # fastview mode
+    asub = a['a']
+    # Need to convert all sets to lists, else literal_eval will fail
+    a.d = convert_sets_to_lists(a.d)
+    # cannot use ast for asub with fastview because of nodes, they will always be shown as sets (unless we extract but then there is no rootpath and we cannot test this branch)
+    assert ast.literal_eval(str(a)) == ast.literal_eval(repr(a)) == a.d
+    assert "'d/'" in str(asub) and "'c': [1, 2]" in str(asub) and "'b': 1" in str(asub) and "'d/e': 1" in str(asub)
+    assert "'d/'" in repr(asub) and "'c': [1, 2]" in repr(asub) and "'b': 1" in repr(asub) and "'d/e': 1" in repr(asub)
+
+def test_fdict_extract_fastview():
+    '''Test fdict extract with fastview'''
+    a = fdict({'a': {'b': 1, 'c': [1, 2], 'd': {'e': 1}}}, fastview=True)  # fastview mode
+    asub = a['a'].extract(fullpath=True)
+    assert asub == fdict({'c': [1, 2], 'b': 1, 'd/e': 1})
+    assert asub.d == {'a/d/': set(['a/d/e']), 'a/c': [1, 2], 'a/b': 1, 'a/': set(['a/d/', 'a/c', 'a/b']), 'a/d/e': 1}
+
+    asub2 = a['a'].extract(fullpath=False)
+    assert asub2 == {'d/': set(['d/e']), 'c': [1, 2], 'b': 1, 'd/e': 1}
+    assert asub2.d == {'d/': set(['d/e']), 'c': [1, 2], 'b': 1, 'd/e': 1}
 
 def test_sfdict_basic():
     '''sfdict: basic tests'''
