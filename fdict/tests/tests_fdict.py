@@ -450,9 +450,9 @@ def test_fdict_viewvalues():
     assert set(a.values()) == set([1, 2, 3, 4])
     assert set(a['a'].values()) == set([1, 2, 4])
     # test with fastview mode and nodes=True
-    v1 = a.values(nodes=True)
+    v1 = list(a.values(nodes=True))
     assert set(['a/e/f']) in v1 and set(['a/b', 'a/c', 'a/e/']) in v1
-    v2 = a['a'].values(nodes=True)
+    v2 = list(a['a'].values(nodes=True))
     assert set(['e/f']) in v2
 
 def test_fdict_view_override_rootpath():
