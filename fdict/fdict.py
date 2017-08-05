@@ -48,7 +48,7 @@ class fdict(dict):
     '''Flattened nested dict, all items are settable and gettable through ['item1']['item2'] standard form or ['item1/item2'] internal form.
     This allows to replace the internal dict with any on-disk storage system like a shelve's shelf (great for huge nested dicts that cannot fit into memory).
     Main limitation: an entry can be both a singleton and a nested fdict: when an item is a singleton, you can setitem to replace to a nested dict, but if it is a nested dict and you setitem it to a singleton, both will coexist. Except for fastview mode, there is no way to know if a nested dict exists unless you walk through all items, which would be too consuming for a simple setitem. In this case, a getitem will always return the singleton, but nested leaves can always be accessed via items() or by direct access (eg, x['a/b/c']).
-    
+
     Fastview mode: remove conflicts issue and allow for fast O(m) contains(), delete() and view*() (such as vieitems()) where m in the number of subitems, instead of O(n) where n was the total number of elements in the fdict(). Downside is setitem() being O(m) too because of nodes metadata building, and memory/storage overhead, since we store all nodes and leaves lists in order to allow for fast lookup.
     '''
     def __init__(self, d=None, rootpath='', delimiter='/', fastview=False, **kwargs):
@@ -118,7 +118,6 @@ class fdict(dict):
     def _get_all_parent_nodes(path, delimiter='/'):
         '''Get path to all parent nodes for current leaf, starting from leaf's direct parent down to root'''
         pos = path.rfind(delimiter)
-        i = 0
         while pos != -1:
             yield path[:pos+1]
             pos = path.rfind(delimiter, 0, pos)
@@ -127,7 +126,6 @@ class fdict(dict):
     def _get_all_parent_nodes_nested(path, delimiter='/'):
         '''Get path to all parent nodes for current leaf, starting from root down to leaf's direct parent, and return only the relative key (not the fullkey)'''
         pos = path.find(delimiter)
-        i = 0
         lastpos = 0
         while pos != -1:
             yield path[lastpos:pos]
@@ -538,7 +536,7 @@ class fdict(dict):
         else:
             try:
                 return self.d.__repr__()
-            except AttributeError as exc:
+            except AttributeError:
                 return repr(dict(self.items()))
 
     def __str__(self):
@@ -547,7 +545,7 @@ class fdict(dict):
         else:
             try:
                 return self.d.__str__()
-            except AttributeError as exc:
+            except AttributeError:
                 return str(dict(self.items()))
 
     def to_dict(self):
