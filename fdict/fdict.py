@@ -551,7 +551,7 @@ class fdict(dict):
         else:
             try:
                 return self.d.__repr__()
-            except AttributeError:
+            except (AttributeError, TypeError):
                 return repr(dict(self.items()))
 
     def __str__(self, nodes=True):
@@ -560,7 +560,7 @@ class fdict(dict):
         else:
             try:
                 return self.d.__str__()
-            except AttributeError:
+            except (AttributeError, TypeError):
                 return str(dict(self.items()))
 
     def to_dict(self):

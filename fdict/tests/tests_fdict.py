@@ -371,6 +371,31 @@ def test_fdict_str_repr():
     assert "'d/'" in str(asub) and "'c': [1, 2]" in str(asub) and "'b': 1" in str(asub) and "'d/e': 1" in str(asub)
     assert "'d/'" in repr(asub) and "'c': [1, 2]" in repr(asub) and "'b': 1" in repr(asub) and "'d/e': 1" in repr(asub)
 
+def test_fdict_str_nodict():
+    '''Test fdict string representation and repr if provided an internal dict-like object that has no str method'''
+    class nostrdict(object):
+        def __init__(self, d=None):
+            if d is None:
+                d = {}
+            self.d = d
+            self.viewkeys, self.viewvalues, self.viewitems = fdict._getitermethods(self.d)
+            self.keys, self.values, self.items = fdict._getitermethods(self.d)
+            return
+        def __getitem__(self, key):
+            return self.d.__getitem__(key)
+        def __setitem__(self, key, d):
+            return self.d.__setitem__(key, d)
+        __str__ = None
+        __repr__ = None
+
+    anodict = nostrdict({'a': 1})
+    assert dict(anodict.viewitems()) == {'a': 1}
+
+    a = fdict(anodict, rootpath='lala')
+    a.rootpath = ''  # cheat to bypass object conversion to dict at init, and then remove rootpath
+    assert dict(a.items()) == {'a': 1}
+    assert str(a) == repr(a) == "{'a': 1}"
+
 def test_fdict_extract_fastview():
     '''Test fdict extract with fastview'''
     a = fdict({'a': {'b': 1, 'c': [1, 2], 'd': {'e': 1}}}, fastview=True)  # fastview mode
