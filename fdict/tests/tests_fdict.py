@@ -134,6 +134,7 @@ def test_fdict_extract_contains_delitem():
     try:
         # Delete inexistent key
         del p['a']['b']['x']
+        assert False
     except KeyError as exc:
         assert True
     else:
@@ -426,6 +427,33 @@ def test_fdict_setitem_update_fdict():
     a4['a'].update(b2)
     assert a3 == a4 == {'a/d': 3, 'a/c': set([1, 2]), 'a/b': 2}
     assert ('a/c', set([1, 2])) in a3.items()
+
+def test_fdict_update_exception():
+    '''Test fdict update exception if supplied non-dict object'''
+    a = fdict()
+    try:
+        a.update([1, 2])
+        assert False
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+def test_fdict_viewvalues():
+    '''Test fdict viewvalues()'''
+    # No fastview
+    a = fdict({'a': {'b': 1, 'c': 2}, 'd': 3})
+    assert set(a.values()) == set([1, 2, 3])
+    assert set(a['a'].values()) == set([1, 2])
+    # Fastview mode
+    a = fdict({'a': {'b': 1, 'c': 2, 'e': {'f': 4}}, 'd': 3}, fastview=True)
+    assert set(a.values()) == set([1, 2, 3, 4])
+    assert set(a['a'].values()) == set([1, 2, 4])
+    # test with fastview mode and nodes=True
+    v1 = a.values(nodes=True)
+    assert {'a/e/f'} in v1 and {'a/b', 'a/c', 'a/e/'} in v1
+    v2 = a['a'].values(nodes=True)
+    assert {'e/f'} in v2
 
 def test_sfdict_basic():
     '''sfdict: basic tests'''

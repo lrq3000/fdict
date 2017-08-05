@@ -411,7 +411,7 @@ class fdict(dict):
                 for k,v in ((k[lpattern:], v) for k,v in self._viewitems() if k.startswith(pattern)):
                     yield k,v
 
-    def viewvalues(self, nodes=False, rootpath=None):
+    def viewvalues(self, fullpath=False, nodes=False, rootpath=None):
         if not rootpath:
             # Allow to override rootpath, particularly useful for delitem (which is always called from parent, so the rootpath is incorrect, overriding the rootpath allows to limit the search breadth)
             rootpath = self.rootpath
@@ -426,6 +426,7 @@ class fdict(dict):
                     yield v
         else:
             pattern = rootpath+self.delimiter
+            lpattern = len(pattern) if not fullpath else 0 # return the shortened path or fullpath? useful only if nodes=True
             if self.fastview:
                 # Fastview mode
                 if pattern in self.d:
