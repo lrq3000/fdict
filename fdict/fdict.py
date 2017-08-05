@@ -317,7 +317,7 @@ class fdict(dict):
                 return self.d.__contains__(dirkey)
             else:
                 # Key might be a node, but we have to check all items
-                for k in self.viewkeys():
+                for k in self.viewkeys(fullpath=True):
                     if k.startswith(dirkey):
                         return True
                 return False

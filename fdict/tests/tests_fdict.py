@@ -29,18 +29,24 @@ def test_fdict_basic():
     assert acopy == {'c/b': set([1, 2]), 'c/d': 3}
     assert b == {'b': set([1, 2]), 'd': 3}
 
-    # Other tests
+    # Test subitem assignment with a nested dict
     d = fdict()
-    d['b'] = {'a': 1} # test subitem assignment of a dict
+    d['b'] = {'a': 1}
     d['c/b'] = set([2, 3, 5])
     assert d.to_dict() == {'c/b': set([2, 3, 5]), 'b/a': 1}
 
+    # Test simple update
     a.update(d)
     assert a.to_dict() == {'c/b': set([2, 3, 5]), 'b/a': 1}
     assert a['c'].to_dict() == {'b': set([2, 3, 5])}
 
-def test_fdict_extract():
-    '''Extract extended test'''
+    # Test initialization with a dict
+    a = fdict(d={'a': {'b': set([1, 2])}})
+    assert not isinstance(a['a']['b'], fdict) and isinstance(a['a']['b'], set)  # should return the leaf's object, not a nested fdict!
+    assert a['a']['b'] == set([1, 2])
+
+def test_fdict_extract_contains_delitem():
+    '''Test fdict extract, contains and delitem'''
     a10 = fdict()
     a10['c/b/d'] = set([1, 2])
     assert a10['c'].extract(fullpath=True).d == {'c/b/d': set([1, 2])}
@@ -56,6 +62,12 @@ def test_fdict_extract():
     assert 'h' in p # check existence of a leaf (O(1))
     assert 'a/b/c' in p # check existence of a nested leaf (O(1))
     assert 'a/b' in p # check existence of a nested dict (O(n))
+    assert 'c' in p['a/b']
+    assert 'c' in p['a']['b']
+    assert 'b' in p['a']
+    assert not 'b' in p
+    assert not 'x' in p
+    assert not 'x' in p['a']
 
     # Del test
     p=fdict()
