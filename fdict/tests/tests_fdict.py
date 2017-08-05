@@ -393,7 +393,7 @@ def test_sfdict_autosync():
         # also happens on Travis, I don't know why, maybe on some linuxes the commits are instantaneous?
         try:
             assert h['a/b'] == {}  # not synced, h has nothing
-        except AssertError:
+        except AssertionError:
             pass
     h.close()
     g.sync()
