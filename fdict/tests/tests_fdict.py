@@ -1,5 +1,6 @@
 # Unit testing of fdict
 from fdict import fdict, sfdict
+import sys
 
 def test_fdict_creation():
     '''fdict: Test creation of just a nested dict, without anything else'''
@@ -83,9 +84,9 @@ def test_fdict_extract():
     '''Extract extended test'''
     a10 = fdict()
     a10['c/b/d'] = set([1, 2])
-    assert a10['c'].extract(fullpath=True).d == {'c/b/d': {1, 2}}
-    assert a10['c'].extract(fullpath=True) == {'b/d': {1, 2}}
-    assert a10['c'].extract(fullpath=False).d == {'b/d': {1, 2}}
+    assert a10['c'].extract(fullpath=True).d == {'c/b/d': set([1, 2])}
+    assert a10['c'].extract(fullpath=True) == {'b/d': set([1, 2])}
+    assert a10['c'].extract(fullpath=False).d == {'b/d': set([1, 2])}
 
     # Contains test
     p=fdict()
@@ -210,7 +211,7 @@ def test_fdict_todictnested():
     '''Test to_dict_nested() conversion'''
     a = fdict({'a/b': 1, 'a/c': set([1, 2]), 'd': 3})
     adict = a.to_dict_nested()
-    assert adict == {'a': {'b': 1, 'c': {1, 2}}, 'd': 3}
+    assert adict == {'a': {'b': 1, 'c': set([1, 2])}, 'd': 3}
     assert not isinstance(adict, fdict) and isinstance(adict, dict)
 
 def test_fdict_update_with_empty_dict():
@@ -260,13 +261,20 @@ def test_fdict_fastview_basic():
         if k.endswith(a.delimiter):
             # all nodes should be copied as different objects
             assert id(a.d[k]) != id(a2.d[k])
-    a3 = deepcopy(a)
-    for k in a.d.keys():
-        # with a deep copy, all items (not just nodes) should be copied as different objects
-        if hasattr(a.d[k], '__len__'):  # compare only collections (because for scalars we can't know if Python caches, or at least I did not find how to check that)
-            assert id(a.d[k]) != id(a3.d[k])  # could replace by equivalent: a.d[k] is not a3.d[k]
+    # test deepcopy
+    if sys.version_info >= (2,7):
+        a3 = deepcopy(a)
+        for k in a.d.keys():
+            # with a deep copy, all items (not just nodes) should be copied as different objects
+            if hasattr(a.d[k], '__len__'):  # compare only collections (because for scalars we can't know if Python caches, or at least I did not find how to check that)
+                assert id(a.d[k]) != id(a3.d[k])  # could replace by equivalent: a.d[k] is not a3.d[k]
     # check that a is unchanged after copy
     assert a == {'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}
+    # test deepcopy of a nested dict with a different delimiter
+    if sys.version_info >= (2,7):
+        b = fdict({'a': {'b': 1, 'c': set([1, 2])}, 'd': 3}, delimiter='.', fastview=True)
+        bsub = deepcopy(b['a'])
+        assert bsub == b['a']
 
 def test_fdict_fastview_del():
     '''Test fastview del'''

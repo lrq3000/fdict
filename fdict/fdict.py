@@ -29,6 +29,8 @@ import shelve
 import sys
 import tempfile
 
+from pickle import HIGHEST_PROTOCOL as PICKLE_HIGHEST_PROTOCOL
+
 
 PY3 = (sys.version_info >= (3,0))
 
@@ -106,11 +108,11 @@ class fdict(dict):
                 _viewitems = d.iteritems
         return _viewkeys, _viewvalues, _viewitems
 
-    def _generickeys(self, d):
-        return self._getitermethods(d)[0]()
+    def _generickeys(self, d, **kwargs):
+        return self._getitermethods(d)[0](**kwargs)
 
-    def _genericitems(self, d):
-        return self._getitermethods(d)[2]()
+    def _genericitems(self, d, **kwargs):
+        return self._getitermethods(d)[2](**kwargs)
 
     @staticmethod
     def _get_all_parent_nodes(path, delimiter='/'):
@@ -538,10 +540,7 @@ class fdict(dict):
 
             # Else size is the same, check each item if they are equal
             # TOREMOVE COMMENT: There is a rootpath, this is a subdict, so we have to filter the items we compare (else we will compare the full dict to d2, which is probably not what the user wants if he does d['item1'] == d2)
-            if PY3:
-                d2items = d2.items(**kwargs)
-            else:
-                d2items = d2.viewitems(**kwargs)
+            d2items = self._genericitems(d2, **kwargs)
             for k, v in d2items:
                 fullkey = self._build_path(k)
                 if not fullkey in self.d or self.d.__getitem__(fullkey) != v:
@@ -626,7 +625,21 @@ class sfdict(fdict):
         fdict.__init__(self, *args, **kwargs)
 
         # Replace internal dict with an out-of-core shelve
-        self.d = shelve.open(filename=self.filename, flag='c', writeback=True)
+        try:
+            self.d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
+        except ImportError as exc:
+            if '_bsddb' in str(exc):
+                # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
+                if PY3:
+                    import dbm
+                    db = dbm.dumb.open(self.filename, 'c')
+                else:
+                    import dumbdbm
+                    db = dumbdbm.open(self.filename, 'c')
+                # Open the dumb db as a shelf
+                self.d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
+            else:
+                raise
 
         # Call compatibility layer
         self._viewkeys, self._viewvalues, self._viewitems = self._getitermethods(self.d)
