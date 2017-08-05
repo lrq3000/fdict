@@ -333,6 +333,20 @@ def test_fdict_setitem_noconflict_delitem():
     del a['d']
     assert a.d == {'a': 2, 'g/l': 8, 'g/h/': set(['g/h/k']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7}
 
+def test_fdict_init_fdict():
+    '''Test fdict initialization with another fdict'''
+    a = fdict({'a': {'b': 1, 'c': set([1, 2])}})
+    b = fdict(a)
+    assert b == a
+    assert id(b.d) != id(a.d)
+
+def test_fdict_init_tuples():
+    '''Test fdict init with a non-dict object (eg, list of tuples)'''
+    a = fdict([('a', {'b': 1, 'c': set([1, 2])})])
+    assert a == {'a/c': set([1, 2]), 'a/b': 1}
+    a = fdict([('a', {'b': 1, 'c': set([1, 2])})], fastview=True)  # fastview mode
+    assert a == {'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/c', 'a/b'])}
+
 def test_sfdict_basic():
     '''sfdict: basic tests'''
     # Sfdict test
