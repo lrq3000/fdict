@@ -627,12 +627,12 @@ class sfdict(fdict):
         # Replace internal dict with an out-of-core shelve
         try:
             self.d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
-        except ImportError as exc:
-            if '_bsddb' in str(exc):
+        except (ImportError, IOError) as exc:
+            if '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
                 # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
                 if PY3:
-                    import dbm
-                    db = dbm.dumb.open(self.filename, 'c')
+                    from dbm import dumb
+                    db = dumb.open(self.filename, 'c')
                 else:
                     import dumbdbm
                     db = dumbdbm.open(self.filename, 'c')
