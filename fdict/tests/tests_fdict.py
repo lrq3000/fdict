@@ -455,6 +455,13 @@ def test_fdict_viewvalues():
     v2 = a['a'].values(nodes=True)
     assert {'e/f'} in v2
 
+def test_fdict_view_override_rootpath():
+    '''Test fdict view* override rootpath'''
+    a = fdict({'a': {'b': 1, 'c': 2, 'e': {'f': 4}}, 'd': 3}, fastview=True)
+    assert a.values(rootpath='a/e') == [4]
+    assert a.keys(rootpath='a/e') == ['f']
+    assert a.items(rootpath='a/e')) == [('f', 4)]
+
 def test_sfdict_basic():
     '''sfdict: basic tests'''
     # Sfdict test
