@@ -407,6 +407,26 @@ def test_fdict_extract_fastview():
     assert asub2 == {'d/': set(['d/e']), 'c': [1, 2], 'b': 1, 'd/e': 1}
     assert asub2.d == {'d/': set(['d/e']), 'c': [1, 2], 'b': 1, 'd/e': 1}
 
+def test_fdict_setitem_update_fdict():
+    '''Test fdict setitem+update with another fdict or dict'''
+    a = fdict({'a': {'b': 1, 'c': set([1, 2])}})
+    a1 = a.copy()
+    a2 = a.copy()
+    a3 = a.copy()
+    a4 = a.copy()
+
+    b1 = fdict({'b': 2, 'd': 3})
+    b2 = {'b': 2, 'd': 3}
+
+    a1['a'] = b1
+    a2['a'] = b2
+    assert a1 == a2 == {'a/d': 3, 'a/b': 2}
+    assert ('a/c', set([1, 2])) not in a1.items()
+    a3['a'].update(b1)
+    a4['a'].update(b2)
+    assert a3 == a4 == {'a/d': 3, 'a/c': set([1, 2]), 'a/b': 2}
+    assert ('a/c', set([1, 2])) in a3.items()
+
 def test_sfdict_basic():
     '''sfdict: basic tests'''
     # Sfdict test

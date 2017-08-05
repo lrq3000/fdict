@@ -162,6 +162,7 @@ class fdict(dict):
         {'1.2.3': 4, '1.5': 6}
 
         v0.1.0 by bfontaine, MIT license
+        modified into a generator by lrq3000
         """
         flat = {}
         dicts = [("", d)]
@@ -226,8 +227,9 @@ class fdict(dict):
         if isinstance(value, dict):
             # if the value is a dict, flatten it recursively or drop if empty
 
-            # First we need to delete the previous value if it was a singleton
-            if fullkey in self.d:
+            # First we need to delete the previous value if it was a singleton or a node
+            # (so we also need to delete all subitems recursively if it was a node)
+            if fullkey in self:
                 self.__delitem__(key)
 
             # Flatten dict and store its leaves
@@ -235,7 +237,8 @@ class fdict(dict):
                 # User supplied an empty dict, the user wants to create a subdict, but it is not necessary here since nested dict are supported by default, just need to assign nested values
                 return
             else:
-                # else not empty dict
+                # else not empty dict, we will merge using update
+                # merge d2 with self.d
                 if isinstance(value, self.__class__):
                     # If it is the same class as this, we merge
                     self.update(self.__class__({key: value}))
@@ -243,8 +246,9 @@ class fdict(dict):
                     # If this is just a normal dict, we flatten it and merge
                     d2 = self.flatkeys({self._build_path(prepend=key) : value}, sep=self.delimiter)
                     self.d.update(d2)
-                    if self.fastview:
-                        self._build_metadata(self._generickeys(d2))
+                # update metadata
+                if self.fastview:
+                    self._build_metadata(self._generickeys(d2))
         else:
             # if the value is not a dict, we consider it a singleton/leaf, and we just build the full key and store the value as is
             if self.fastview:
