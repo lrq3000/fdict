@@ -352,14 +352,19 @@ def test_fdict_str_repr():
     a = fdict({'a': {'b': 1, 'c': set([1, 2])}})
     try:
         assert str(a) == repr(a) == "{'a/c': set([1, 2]), 'a/b': 1}"
+        assert str(a['a']) == repr(a['a']) == "{'c': set([1, 2]), 'b': 1}"
     except AssertionError:
         # In Py3, set() string representation becomes {}
         assert str(a) == repr(a) == "{'a/c': {1, 2}, 'a/b': 1}"
-    a = fdict({'a': {'b': 1, 'c': set([1, 2])}}, fastview=True)  # fastview mode
+        assert str(a['a']) == repr(a['a']) == "{'c': {1, 2}, 'b': 1}"
+
+    a = fdict({'a': {'b': 1, 'c': set([1, 2]), 'd': {'e': 1}}}, fastview=True)  # fastview mode
     try:
-        assert str(a) == repr(a) == "{'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/c', 'a/b'])}"
+        assert str(a) == repr(a) == "{'a/d/': set(['a/d/e']), 'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/d/', 'a/c', 'a/b']), 'a/d/e': 1}"
+        assert str(a['a']) == repr(a['a']) == "{'d/': set(['d/e']), 'c': set([1, 2]), 'b': 1, 'd/e': 1}"
     except AssertionError:
-        assert str(a) == repr(a) == "{'a/c': {1, 2}, 'a/b': 1, 'a/': {'a/c', 'a/b'}}"
+        assert str(a) == repr(a) == "{'a/d/': {'a/d/e'}, 'a/c': {1, 2}, 'a/b': 1, 'a/': {'a/d/', 'a/c', 'a/b'}, 'a/d/e': 1}"
+        assert str(a['a']) == repr(a['a']) == "{'d/': {'d/e'}, 'c': {1, 2}, 'b': 1, 'd/e': 1}"
 
 def test_sfdict_basic():
     '''sfdict: basic tests'''
