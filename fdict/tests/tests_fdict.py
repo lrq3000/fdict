@@ -16,6 +16,10 @@ def test_fdict_basic():
 
     assert list(a.keys()) == ['c/b']
     assert dict(a.items()) == dict([('c/b', set([1, 2]))])
+    
+    # Test getitem
+    assert a['c']['b'] == a['c/b'] == set([1, 2])  # leaf
+    assert dict(a['c'].items()) == {'b': set([1, 2])}  # node
 
     # Copy test
     acopy = a.copy()

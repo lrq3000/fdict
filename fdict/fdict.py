@@ -201,11 +201,12 @@ class fdict(dict):
 
     def __getitem__(self, key):
         '''Get an item given the key. O(1) in any case: if the item is a leaf, direct access, else if it is a node, a new fdict will be returned with a different rootpath but sharing the same internal dict.'''
+        fullkey = self._build_path(key)
         # Node or leaf?
-        if key in self.d: # Leaf: return the value (leaf direct access test is why we do `in self.d` and not `in self`)
-            return self.d.__getitem__(key)
+        if fullkey in self.d: # Leaf: return the value (leaf direct access test is why we do `in self.d` and not `in self`)
+            return self.d.__getitem__(fullkey)
         else: # Node: return a new full fdict based on the old one but with a different rootpath to limit the results by default (this is the magic that allows compatibility with the syntax d['item1']['item2'])
-            return self.__class__(d=self.d, rootpath=self._build_path(key), delimiter=self.delimiter, fastview=self.fastview, **self.kwargs)
+            return self.__class__(d=self.d, rootpath=fullkey, delimiter=self.delimiter, fastview=self.fastview, **self.kwargs)
 
     def __setitem__(self, key, value):
         '''Set an item given the key. Supports for direct setting of nested elements without prior dict(), eg, x['a/b/c'] = 1. O(1) to set the item. If fastview mode, O(m*l) because of metadata building where m is the number of parents of current leaf, and l the number of leaves (if provided a nested dict).'''
