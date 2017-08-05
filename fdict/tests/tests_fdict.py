@@ -388,7 +388,9 @@ def test_sfdict_autosync():
     g['d'] = 4
     filename = g.get_filename()
     h = sfdict(filename=filename)
-    assert h['a/b'] == {}  # not synced, h has nothing
+    if not '__pypy__' in sys.builtin_module_names:
+        # pypy seems to always commit the changes, even without sync!
+        assert h['a/b'] == {}  # not synced, h has nothing
     h.close()
     g.sync()
     h = sfdict(filename=filename)  # reopen after syncing g
