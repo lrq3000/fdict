@@ -17,6 +17,9 @@ def test_fdict_basic():
     assert list(a.keys()) == ['c/b']
     assert dict(a.items()) == dict([('c/b', set([1, 2]))])
 
+    # Test sharing of the internal dict across nested fdicts
+    assert id(a.d) == id(a['c'].d)
+
     # Test equality
     assert a == {'c/b': set([1, 2])} and a == {'c': {'b': set([1, 2])}}  # equality dict
     assert a['c/b'] == set([1, 2])  # leaf direct access
