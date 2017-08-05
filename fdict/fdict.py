@@ -660,6 +660,7 @@ class sfdict(fdict):
             # Then update self.d to use the shelve instead
             del self.d
             self.d = d
+            self.d.sync()
 
         # Call compatibility layer
         self._viewkeys, self._viewvalues, self._viewitems = self._getitermethods(self.d)

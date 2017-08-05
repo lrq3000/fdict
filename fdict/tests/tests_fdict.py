@@ -60,6 +60,32 @@ def test_fdict_basic():
     assert not isinstance(a['a']['b'], fdict) and isinstance(a['a']['b'], set)  # should return the leaf's object, not a nested fdict!
     assert a['a']['b'] == set([1, 2])
 
+def test_fdict_flattening_extract_update():
+    '''Test fdict flattening, extract and update'''
+    # Flattening test
+    m = {}
+    m['a'] = 1
+    m['b'] = {'c': 3, 'd': {'e': 5}}
+    m['f'] = set([1, 2, 5])
+    m2 = fdict(m)
+    assert dict(m2.items()) == fdict.flatkeys(m)
+
+    # Update and extract test
+    n = {}
+    n['b'] = {'d': {'f': 6}}
+    n['g'] = 7
+    m2.update(n)
+    assert m2 == {'a': 1, 'g': 7, 'b/c': 3, 'b/d/e': 5, 'b/d/f': 6, 'f': set([1, 2, 5])}
+
+    assert m2['b'].d == m2.d
+    assert m2['b'].extract().d == {'b/c': 3, 'b/d/e': 5, 'b/d/f': 6}
+
+    # len() test
+    assert len(m2) == 6
+    assert len(m2['b']) == 3
+    assert len(m2['b']['d']) == len(m2['b/d']) == 2
+    assert not hasattr(m2['g'], '__len__') and isinstance(m2['g'], int)
+
 def test_fdict_extract_contains_delitem():
     '''Test fdict extract, contains and delitem'''
     a10 = fdict()
@@ -317,36 +343,13 @@ def test_sfdict_basic():
     assert g == {'a': 3, 'b/c': set([1, 3, 4])}
     assert g == {'a': 3, 'b/c': set([1, 3, 4]), 'd': {}} # empty dicts are stripped out before comparison
     assert g['b'].filename == g.filename # check that subdicts also share the same filename (parameters propagation)
+    g.sync()  # commit the changes
 
     # Sfdict reloading test
     h = sfdict(filename='testshelf')
     assert h == g
     g.close()
-    h.close()
-
-    # Flattening test
-    m = {}
-    m['a'] = 1
-    m['b'] = {'c': 3, 'd': {'e': 5}}
-    m['f'] = set([1, 2, 5])
-    m2 = fdict(m)
-    assert dict(m2.items()) == fdict.flatkeys(m)
-
-    # Update and extract test
-    n = {}
-    n['b'] = {'d': {'f': 6}}
-    n['g'] = 7
-    m2.update(n)
-    assert m2 == {'a': 1, 'g': 7, 'b/c': 3, 'b/d/e': 5, 'b/d/f': 6, 'f': set([1, 2, 5])}
-
-    assert m2['b'].d == m2.d
-    assert m2['b'].extract().d == {'b/c': 3, 'b/d/e': 5, 'b/d/f': 6}
-
-    # len() test
-    assert len(m2) == 6
-    assert len(m2['b']) == 3
-    assert len(m2['b']['d']) == len(m2['b/d']) == 2
-    assert not hasattr(m2['g'], '__len__') and isinstance(m2['g'], int)
+    h.close(delete=True)
 
 def test_sfdict_dictinit():
     '''Test sfdict initialization with a dict'''
@@ -381,7 +384,7 @@ def test_sfdict_autosync():
     assert h['a/b'] == set([1, 2, 3])
     assert (h['a/b/c'] == 3) == False
     g.close()
-    h.close()
+    h.close(delete=True)
     # Without autosync, the change is lost
     g = sfdict(d={'a': {'b': set([1, 2])}}, autosync=False)
     g['a']['b'].add(3)
@@ -401,7 +404,7 @@ def test_sfdict_autosync():
     h = sfdict(filename=filename)  # reopen after syncing g
     assert h == {'a/b': set([1, 2, 3]), 'd': 4}
     g.close()
-    h.close()
+    h.close(delete=True)
 
 def test_sfdict_writeback():
     '''Test sfdict writeback'''
@@ -411,7 +414,7 @@ def test_sfdict_writeback():
     g['d']['e'].add(3)
     assert g['a/b'] == set([1, 2, 3])
     assert g['d']['e'] == set([1, 2, 3])
-    g.close()
+    g.close(delete=True)
     # Writeback=False
     g = sfdict(d={'a': {'b': set([1, 2])}, 'd': {'e': set([1, 2])}}, writeback=False)
     g['a/b'].add(3)
