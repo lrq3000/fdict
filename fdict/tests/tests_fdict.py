@@ -14,8 +14,8 @@ def test_fdict_basic():
     a['a'] = {}
     a['c']['b'] = set([1, 2])
 
-    assert a.keys() == ['c/b']
-    assert a.items() == [('c/b', set([1, 2]))]
+    assert list(a.keys()) == ['c/b']
+    assert dict(a.items()) == dict([('c/b', set([1, 2]))])
 
     # Copy test
     acopy = a.copy()
@@ -24,7 +24,7 @@ def test_fdict_basic():
 
     # Referencing into another variable of a nested item + check update of nested items
     b = acopy['c']
-    assert b.items() == [('b', set([1, 2]))]
+    assert dict(b.items()) == dict([('b', set([1, 2]))])
     acopy['c'].update({'d': 3})
     assert acopy == {'c/b': set([1, 2]), 'c/d': 3}
     assert b == {'b': set([1, 2]), 'd': 3}
@@ -239,9 +239,9 @@ def test_fdict_fastview_basic():
     assert set(a['a']['e'].keys(fullpath=True)) == set(['a/e/g/i', 'a/e/g/h', 'a/e/f'])
     assert set(a['a']['e'].values()) == set([5, 4, 3])
     assert set(a['a'].values()) == set([1, 2, 3, 4, 5])  # use set() when we do not case about order in a list
-    assert a['j'].items() == []  # empty nested dict
-    assert a['j'].keys() == []
-    assert a['j'].values() == []
+    assert dict(a['j'].items()) == {}  # empty nested dict
+    assert list(a['j'].keys()) == []
+    assert list(a['j'].values()) == []
 
     # test fastview contains
     assert 'a' in a
@@ -285,14 +285,14 @@ def test_fdict_fastview_del():
     del a['a/e/g/h']
     del a2['a']['e']['g']['h']
     assert a == a2 == {'a/e/g/': set(['a/e/g/i']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5}
-    assert 'a/e/g/h' not in a['a'].keys(fullpath=True, nodes=True)
+    assert 'a/e/g/h' not in list(a['a'].keys(fullpath=True, nodes=True))
     # node deletion
     assert set(a['a/e'].keys()) == set(a2['a']['e'].keys()) == set(['g/i', 'f'])
     assert set(a['a/e'].keys(nodes=True)) == set(a['a']['e'].keys(nodes=True)) == set(['g/', 'g/i', 'f'])
     del a['a/e']
     del a2['a']['e']
     assert a == a.d == a2 == a2.d == {'a/': set(['a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d'])}
-    assert not a['a/e'].keys() and not a2['a']['e']
+    assert not set(a['a/e'].keys()) and not dict(a2['a']['e'])
     assert set(a['a'].keys(fullpath=True, nodes=True)) == set(['a/b/', 'a/b/d', 'a/b/c'])
 
 def test_fdict_metadata_nested_dict():

@@ -25,6 +25,7 @@
 #
 
 import collections
+import itertools
 import shelve
 import sys
 import tempfile
@@ -37,7 +38,6 @@ PY3 = (sys.version_info >= (3,0))
 if PY3:
     _zip = zip
 else:
-    import itertools
     _zip = itertools.izip
 
 
