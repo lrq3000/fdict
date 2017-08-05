@@ -347,6 +347,20 @@ def test_fdict_init_tuples():
     a = fdict([('a', {'b': 1, 'c': set([1, 2])})], fastview=True)  # fastview mode
     assert a == {'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/c', 'a/b'])}
 
+def test_fdict_str_repr():
+    '''Test fdict str and repr'''
+    a = fdict({'a': {'b': 1, 'c': set([1, 2])}})
+    try:
+        assert str(a) == repr(a) == "{'a/c': set([1, 2]), 'a/b': 1}"
+    except AssertionError:
+        # In Py3, set() string representation becomes {}
+        assert str(a) == repr(a) == "{'a/c': {1, 2}, 'a/b': 1}"
+    a = fdict({'a': {'b': 1, 'c': set([1, 2])}}, fastview=True)  # fastview mode
+    try:
+        assert str(a) == repr(a) == "{'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/c', 'a/b'])}"
+    except AssertionError:
+        assert str(a) == repr(a) == "{'a/c': {1, 2}, 'a/b': 1, 'a/': {'a/c', 'a/b'}}"
+
 def test_sfdict_basic():
     '''sfdict: basic tests'''
     # Sfdict test
