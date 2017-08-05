@@ -352,6 +352,7 @@ def test_sfdict_dictinit():
     '''Test sfdict initialization with a dict'''
     g = sfdict(d={'a': {'b': set([1, 2])}})
     assert g == {'a/b': set([1, 2])}
+    assert id(g.d) == id(g['a'].d)  # ensure the same dict is shared with nested sfdict
     g.close(delete=True)
 
 def test_sfdict_forcedbm_filename():
@@ -401,3 +402,27 @@ def test_sfdict_autosync():
     assert h == {'a/b': set([1, 2, 3]), 'd': 4}
     g.close()
     h.close()
+
+def test_sfdict_writeback():
+    '''Test sfdict writeback'''
+    # Writeback=True
+    g = sfdict(d={'a': {'b': set([1, 2])}, 'd': {'e': set([1, 2])}}, writeback=True)
+    g['a/b'].add(3)
+    g['d']['e'].add(3)
+    assert g['a/b'] == set([1, 2, 3])
+    assert g['d']['e'] == set([1, 2, 3])
+    g.close()
+    # Writeback=False
+    g = sfdict(d={'a': {'b': set([1, 2])}, 'd': {'e': set([1, 2])}}, writeback=False)
+    g['a/b'].add(3)
+    g['d']['e'].add(3)
+    assert g['a/b'] == set([1, 2])
+    assert g['d']['e'] == set([1, 2])
+    temp = g['a']['b']
+    temp.add(3)
+    g['a/b'] = temp
+    g['d']['e'] = temp
+    assert id(g.d) == id(g['d'].d)
+    assert g['a/b'] == set([1, 2, 3])
+    assert g['d']['e'] == set([1, 2, 3])
+    g.close(delete=True)

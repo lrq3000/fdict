@@ -32,6 +32,7 @@ import sys
 import tempfile
 
 from pickle import HIGHEST_PROTOCOL as PICKLE_HIGHEST_PROTOCOL
+from types import GeneratorType
 
 
 PY3 = (sys.version_info >= (3,0))
@@ -64,9 +65,12 @@ class fdict(dict):
                 # Internal call, we get a subdict, we just create a new fdict with the same dictionary but with a restricted rootpath
                 if isinstance(d, dict):
                     self.d = d
-                else:
+                elif isinstance(d, (list, GeneratorType)):
                     # sometimes (particularly extract(fullpath=True)) we get a list of tuples instead of a dict
                     self.d = dict(d)
+                else:
+                    # if we use a shelve or probably other types of out-of-core dicts, we will get an object that is not a subclass of dict, so we should just trust the sender and keep the supplied dict as-is
+                    self.d = d
             elif isinstance(d, self.__class__):
                 # We were supplied a fdict, initialize a copy
                 self.d = d.copy().d
@@ -630,30 +634,32 @@ class sfdict(fdict):
         super(self.__class__, self).__init__(*args, **kwargs)
 
         # Initialize the out-of-core shelve database file
-        try:
-            if self.forcedumbdbm:
-                # Force the use of dumb dbm even if slower
-                raise ImportError('pass')
-            d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
-        except (ImportError, IOError) as exc:
-            if 'pass' in str(exc).lower() or '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
-                # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
-                if PY3:  # pragma: no cover
-                    from dbm import dumb
-                    db = dumb.open(self.filename, 'c')
-                else:
-                    import dumbdbm
-                    db = dumbdbm.open(self.filename, 'c')
-                # Open the dumb db as a shelf
-                d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
-            else:  # pragma: no cover
-                raise
+        if not self.rootpath: # If rootpath, this is an internal call, we just reuse the input dict
+            # Else it is an external call, we reuse the provided dict but we make a copy and store in another file, or there is no provided dict and we create a new one
+            try:
+                if self.forcedumbdbm:
+                    # Force the use of dumb dbm even if slower
+                    raise ImportError('pass')
+                d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
+            except (ImportError, IOError) as exc:
+                if 'pass' in str(exc).lower() or '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
+                    # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
+                    if PY3:  # pragma: no cover
+                        from dbm import dumb
+                        db = dumb.open(self.filename, 'c')
+                    else:
+                        import dumbdbm
+                        db = dumbdbm.open(self.filename, 'c')
+                    # Open the dumb db as a shelf
+                    d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
+                else:  # pragma: no cover
+                    raise
 
-        # Initialize the shelve with the internal dict preprocessed by the parent class fdict
-        d.update(self.d)
-        # Then update self.d to use the shelve instead
-        del self.d
-        self.d = d
+            # Initialize the shelve with the internal dict preprocessed by the parent class fdict
+            d.update(self.d)
+            # Then update self.d to use the shelve instead
+            del self.d
+            self.d = d
 
         # Call compatibility layer
         self._viewkeys, self._viewvalues, self._viewitems = self._getitermethods(self.d)
