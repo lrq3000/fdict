@@ -454,6 +454,47 @@ def test_fdict_viewvalues():
     assert set(['a/e/f']) in v1 and set(['a/b', 'a/c', 'a/e/']) in v1
     v2 = list(a['a'].values(nodes=True))
     assert set(['e/f']) in v2
+    # test with fullpath
+    v3 = list(a['a'].values(nodes=True, fullpath=True))
+    assert set(['a/e/f']) in v3
+
+def test_fdict_viewkeys():
+    '''Test fdict viewkeys()'''
+    # No fastview
+    a = fdict({'a': {'b': 1, 'c': 2}, 'd': 3})
+    assert set(a.keys()) == set(['a/c', 'd', 'a/b'])
+    assert set(a['a'].keys()) == set(['c', 'b'])
+    # Fastview mode
+    a = fdict({'a': {'b': 1, 'c': 2, 'e': {'f': 4}}, 'd': 3}, fastview=True)
+    assert set(a.keys()) == set(['a/c', 'd', 'a/e/f', 'a/b'])
+    assert set(a['a'].keys()) == set(['c', 'b', 'e/f'])
+    # test with fastview mode and nodes=True
+    v1 = set(a.keys(nodes=True))
+    assert v1 == set(['a/c', 'd', 'a/e/f', 'a/e/', 'a/', 'a/b'])
+    v2 = set(a['a'].keys(nodes=True))
+    assert v2 == set(['e/', 'c', 'b', 'e/f'])
+    # test with fullpath
+    v3 = set(a['a'].keys(nodes=True, fullpath=True))
+    assert v3 == set(['a/e/', 'a/c', 'a/b', 'a/e/f'])
+
+def test_fdict_viewitems():
+    '''Test fdict viewitems()'''
+    # No fastview
+    a = fdict({'a': {'b': 1, 'c': 2}, 'd': 3})
+    assert dict(a.items()) == fdict.flatkeys({'a': {'b': 1, 'c': 2}, 'd': 3})
+    assert dict(a['a'].items()) == {'c': 2, 'b': 1}
+    # Fastview mode
+    a = fdict({'a': {'b': 1, 'c': 2, 'e': {'f': 4}}, 'd': 3}, fastview=True)
+    assert dict(a.items()) == fdict.flatkeys({'a': {'b': 1, 'c': 2, 'e': {'f': 4}}, 'd': 3})
+    assert dict(a['a'].items()) == {'c': 2, 'b': 1, 'e/f': 4}
+    # test with fastview mode and nodes=True
+    v1 = dict(a.items(nodes=True))
+    assert v1 == {'a/c': 2, 'a/b': 1, 'a/e/f': 4, 'a/e/': set(['a/e/f']), 'a/': set(['a/e/', 'a/c', 'a/b']), 'd': 3}
+    v2 = dict(a['a'].items(nodes=True))
+    assert v2 == {'e/': set(['e/f']), 'b': 1, 'c': 2, 'e/f': 4}
+    # test with fullpath
+    v3 = dict(a['a'].items(nodes=True, fullpath=True))
+    assert v3 == {'a/e/': set(['a/e/f']), 'a/c': 2, 'a/b': 1, 'a/e/f': 4}
 
 def test_fdict_view_override_rootpath():
     '''Test fdict view* override rootpath'''
