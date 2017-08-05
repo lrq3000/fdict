@@ -36,7 +36,7 @@ from pickle import HIGHEST_PROTOCOL as PICKLE_HIGHEST_PROTOCOL
 
 PY3 = (sys.version_info >= (3,0))
 
-if PY3:
+if PY3:  # NOQA
     _zip = zip
 else:
     _zip = itertools.izip
@@ -90,7 +90,7 @@ class fdict(dict):
     @staticmethod
     def _getitermethods(d):
         '''Defines what function to use to access the internal dictionary items most efficiently depending on Python version'''
-        if PY3:
+        if PY3:  # NOQA
             # Py3
             _viewkeys = d.keys
             _viewvalues = d.values
@@ -435,7 +435,7 @@ class fdict(dict):
     iterkeys = viewkeys
     itervalues = viewvalues
     iteritems = viewitems
-    if PY3:
+    if PY3:  # NOQA
         keys = viewkeys
         values = viewvalues
         items = viewitems
@@ -628,7 +628,7 @@ class sfdict(fdict):
         except (ImportError, IOError) as exc:
             if 'pass' in str(exc).lower() or '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
                 # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
-                if PY3:
+                if PY3:  # NOQA
                     from dbm import dumb
                     db = dumb.open(self.filename, 'c')
                 else:
@@ -636,7 +636,7 @@ class sfdict(fdict):
                     db = dumbdbm.open(self.filename, 'c')
                 # Open the dumb db as a shelf
                 d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
-            else:
+            else:  # NOQA
                 raise
 
         # Initialize the shelve with the internal dict preprocessed by the parent class fdict
