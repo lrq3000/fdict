@@ -39,47 +39,6 @@ def test_fdict_basic():
     assert a.to_dict() == {'c/b': set([2, 3, 5]), 'b/a': 1}
     assert a['c'].to_dict() == {'b': set([2, 3, 5])}
 
-def test_sfdict_basic():
-    '''sfdict: basic tests'''
-    # Sfdict test
-    g = sfdict(filename='testshelf')
-    g['a'] = 3
-    g['b/c'] = set([1, 3, 4])
-    g['d'] = {}
-    assert g == {'a': 3, 'b/c': set([1, 3, 4])}
-    assert g == {'a': 3, 'b/c': set([1, 3, 4]), 'd': {}} # empty dicts are stripped out before comparison
-    assert g['b'].filename == g.filename # check that subdicts also share the same filename (parameters propagation)
-
-    # Sfdict reloading test
-    h = sfdict(filename='testshelf')
-    assert h == g
-    g.close()
-    h.close()
-
-    # Flattening test
-    m = {}
-    m['a'] = 1
-    m['b'] = {'c': 3, 'd': {'e': 5}}
-    m['f'] = set([1, 2, 5])
-    m2 = fdict(m)
-    assert dict(m2.items()) == fdict.flatkeys(m)
-
-    # Update and extract test
-    n = {}
-    n['b'] = {'d': {'f': 6}}
-    n['g'] = 7
-    m2.update(n)
-    assert m2 == {'a': 1, 'g': 7, 'b/c': 3, 'b/d/e': 5, 'b/d/f': 6, 'f': set([1, 2, 5])}
-
-    assert m2['b'].d == m2.d
-    assert m2['b'].extract().d == {'b/c': 3, 'b/d/e': 5, 'b/d/f': 6}
-
-    # len() test
-    assert len(m2) == 6
-    assert len(m2['b']) == 3
-    assert len(m2['b']['d']) == len(m2['b/d']) == 2
-    assert not hasattr(m2['g'], '__len__') and isinstance(m2['g'], int)
-
 def test_fdict_extract():
     '''Extract extended test'''
     a10 = fdict()
@@ -320,3 +279,56 @@ def test_fdict_setitem_noconflict_delitem():
     # delitem nested dict
     del a['d']
     assert a.d == {'a': 2, 'g/l': 8, 'g/h/': set(['g/h/k']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7}
+
+def test_sfdict_basic():
+    '''sfdict: basic tests'''
+    # Sfdict test
+    g = sfdict(filename='testshelf')
+    g['a'] = 3
+    g['b/c'] = set([1, 3, 4])
+    g['d'] = {}
+    assert g == {'a': 3, 'b/c': set([1, 3, 4])}
+    assert g == {'a': 3, 'b/c': set([1, 3, 4]), 'd': {}} # empty dicts are stripped out before comparison
+    assert g['b'].filename == g.filename # check that subdicts also share the same filename (parameters propagation)
+
+    # Sfdict reloading test
+    h = sfdict(filename='testshelf')
+    assert h == g
+    g.close()
+    h.close()
+
+    # Flattening test
+    m = {}
+    m['a'] = 1
+    m['b'] = {'c': 3, 'd': {'e': 5}}
+    m['f'] = set([1, 2, 5])
+    m2 = fdict(m)
+    assert dict(m2.items()) == fdict.flatkeys(m)
+
+    # Update and extract test
+    n = {}
+    n['b'] = {'d': {'f': 6}}
+    n['g'] = 7
+    m2.update(n)
+    assert m2 == {'a': 1, 'g': 7, 'b/c': 3, 'b/d/e': 5, 'b/d/f': 6, 'f': set([1, 2, 5])}
+
+    assert m2['b'].d == m2.d
+    assert m2['b'].extract().d == {'b/c': 3, 'b/d/e': 5, 'b/d/f': 6}
+
+    # len() test
+    assert len(m2) == 6
+    assert len(m2['b']) == 3
+    assert len(m2['b']['d']) == len(m2['b/d']) == 2
+    assert not hasattr(m2['g'], '__len__') and isinstance(m2['g'], int)
+
+def test_sfdict_filename():
+    '''Test sfdict get_filename()'''
+    g = sfdict(filename='testshelf2')
+    assert g.get_filename() == 'testshelf2'
+    g.close(delete=True)
+    i = sfdict()
+    assert len(i.get_filename()) > 0
+    i.close(delete=True)
+    j = sfdict(forcedumbdbm=True)
+    assert len(j.get_filename()) > 0
+    j.close(delete=True)

@@ -26,6 +26,7 @@
 
 import collections
 import itertools
+import os
 import shelve
 import sys
 import tempfile
@@ -516,7 +517,7 @@ class fdict(dict):
                 else:
                     kwargs['fullpath'] = False
             elif isinstance(d2, dict): # normal dict, need to flatten it first
-                d2 = fdict.flatkeys(d2, sep=self.delimiter)
+                d2 = self.__class__.flatkeys(d2, sep=self.delimiter)
                 if len(self) != len(d2):
                     return False
 
@@ -591,26 +592,41 @@ class sfdict(fdict):
     '''
     def __init__(self, *args, **kwargs):
         # Initialize specific arguments for sfdict
-        if not ('filename' in kwargs):
-            self.filename = tempfile.NamedTemporaryFile(delete=False).name
-        else:
+        if 'filename' in kwargs:
             self.filename = kwargs['filename']
             #del kwargs['filename'] # do not del for auto management of internal sub calls to sfdict
+        else:
+            # No filename was supplied, create a temporary file
+            file = tempfile.NamedTemporaryFile(mode='w+b', delete=False, suffix='.shelve')
+            self.filename = file.name
+            file.close()
+            # always remove temporary file before opening the db (else we get an error because the file has an unrecognized db format)
+            os.remove(self.filename)
 
         if 'autosync' in kwargs:
+            # Autosync changes back to the db file? By default true.
             self.autosync = kwargs['autosync']
             #del kwargs['autosync']
         else:
             self.autosync = True
+        
+        if 'forcedumbdbm' in kwargs:
+            # Force the use of dumbdbm, a generic implementation available on all platforms (but slow)?
+            self.forcedumbdbm = kwargs['forcedumbdbm']
+        else:
+            self.forcedumbdbm = False
 
         # Initialize parent class
-        fdict.__init__(self, *args, **kwargs)
+        super(self.__class__, self).__init__(*args, **kwargs)
 
         # Replace internal dict with an out-of-core shelve
         try:
+            if self.forcedumbdbm:
+                # Force the use of dumb dbm even if slower
+                raise ImportError('pass')
             self.d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=True)
         except (ImportError, IOError) as exc:
-            if '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
+            if 'pass' in str(exc).lower() or '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
                 # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
                 if PY3:
                     from dbm import dumb
@@ -627,18 +643,20 @@ class sfdict(fdict):
         self._viewkeys, self._viewvalues, self._viewitems = self._getitermethods(self.d)
 
     def __setitem__(self, key, value):
-        fdict.__setitem__(self, key, value)
+        super(self.__class__, self).__setitem__(key, value)
         if self.autosync:
             self.sync()
 
     def get_filename(self):
-        if self.filename:
-            return self.filename
-        else:
-            return self.d.dict._datfile
+        return self.filename
 
     def sync(self):
         self.d.sync()
 
-    def close(self):
+    def close(self, delete=False):
         self.d.close()
+        if delete:
+            try:
+                os.remove(self.get_filename())
+            except Exception:
+                pass
