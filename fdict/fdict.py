@@ -298,9 +298,8 @@ class fdict(dict):
                 # Note that we ovveride the rootpath of viewkeys, because if delitem is called on a nested element (eg, del x['a']['b']), then the rootpath is the parent, so we will walk through all parent elements when we need only to walk from the child (the current node key), so this is both an optimization and also bugfix (because else we get a different behaviour if we use del x['a/b'] and del x['a']['b'])
                 keystodel = [k for k in self.viewkeys(fullpath=True, nodes=True, rootpath=fullkey)]
                 # We can already delete the current node key
-                if dirkey in self.d:
-                    self.d.__delitem__(dirkey)
-                    flagdel = True
+                self.d.__delitem__(dirkey)
+                flagdel = True
                 # Remove current node from its parent node's set()
                 parentnode = self._get_parent_node(fullkey, self.delimiter)
                 if parentnode: # if the node is not 1st-level (because then the parent is the root, it's then a fdict, not a set)
@@ -543,13 +542,13 @@ class fdict(dict):
                         return False
                     else:
                         kwargs['fullpath'] = False
-                elif is_dict: # normal dict, need to flatten it first
+                else:  # normal dict, need to flatten it first
                     d2 = self.__class__.flatkeys(d2, sep=self.delimiter)
                     if len(self) != len(d2):
                         return False
 
                 # Else size is the same, check each item if they are equal
-                # TOREMOVE COMMENT: There is a rootpath, this is a subdict, so we have to filter the items we compare (else we will compare the full dict to d2, which is probably not what the user wants if he does d['item1'] == d2)
+                # BTW, we use viewitems to filter according to rootpath the items we compare (else we will compare the full dict to d2 if d2 is a fdict, which is probably not what the user wants if he does d['item1'] == d2)
                 d2items = self._genericitems(d2, **kwargs)
                 for k, v in d2items:
                     fullkey = self._build_path(k)
