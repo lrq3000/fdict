@@ -648,7 +648,7 @@ class sfdict(fdict):
             self.forcedumbdbm = False
 
         # Initialize parent class
-        super(self.__class__, self).__init__(*args, **kwargs)
+        super(fdict, self).__init__(*args, **kwargs)
 
         # Initialize the out-of-core shelve database file
         if not self.rootpath: # If rootpath, this is an internal call, we just reuse the input dict
@@ -683,7 +683,7 @@ class sfdict(fdict):
         self._viewkeys, self._viewvalues, self._viewitems = self._getitermethods(self.d)
 
     def __setitem__(self, key, value):
-        super(self.__class__, self).__setitem__(key, value)
+        super(fdict, self).__setitem__(key, value)
         if self.autosync:
             # Commit pending changes everytime we set an item
             self.sync()
