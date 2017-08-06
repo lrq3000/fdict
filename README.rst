@@ -84,9 +84,9 @@ Performances
 
 ``fdict`` was made with maximum compatibility with existing code using ``dict`` and with reasonable performances. That's in theory, in practice ``fdict`` are slower than ``dict`` for most purposes, except setitem and getitem if you use direct access form (eg, x['a/b/c'] instead of x['a']['b']['c']).
 
-As such, you can expect O(1) performance just like ``dict`` for any operation on leaves (non-dict objects): getitem, setitem, delitem, eq contains. In practice, ``fdict`` is about 10x slower than ``dict`` using indirect access on leaves (ie, x['a']['b']['c']), and is as fast as ``dict`` using direct access (ie, x['a/b/c']).
+As such, you can expect O(1) performance just like ``dict`` for any operation on leaves (non-dict objects): getitem, setitem, delitem, eq contains. In practice, ``fdict`` is about 10x slower than ``dict`` because of class overhead and key string manipulation, for both indirect access (ie, x['a']['b']['c']) and direct access on leaves (ie, x['a/b/c']). There is no noticeable performance advantage to either kind of access, so you can use the one that pleases you the most. This performance cost is acceptable for a quick prototype of a bigdata database, since building and retrieving items are the most common operations.
 
-The drawback comes when you work on nodes (nested dict objects): since all keys are flattened and on the same level, the only way to get only the children of a nested dict (aka a branch) is to walk through all keys and filter out the ones not matching the current branch. This means that any operation on nodes will be in O(n) where n is the total number of items in the whole fdict. Affected operations are: items, keys, values, view*, iter*, delitem on nodes, eq on nodes, contains on nodes.
+The major drawback comes when you work on nodes (nested dict objects): since all keys are flattened and on the same level, the only way to get only the children of a nested dict (aka a branch) is to walk through all keys and filter out the ones not matching the current branch. This means that any operation on nodes will be in O(n) where n is the total number of items in the whole fdict. Affected operations are: items, keys, values, view*, iter*, delitem on nodes, eq on nodes, contains on nodes.
 
 Interestingly, getitem on nodes is not affected, because we use a lazy approach: getting a nested dict will not build anything, it will just spawn a new fdict with a different filtering rootpath. Nothing gets evaluated, until you either attain a leaf (in this case we return the non-dict object value) or you use an operation on node such as items(). Keep in mind that any nested fdict will share the same internal flattened dict, so any nested fdict will also have access to all items at any level!
 
@@ -99,6 +99,14 @@ To circumvent this pitfall, two things were implemented:
     * ``fastview=True`` argument can be used when creating a fdict to enable the FastView mode. This mode will imply a small memory/space overhead to store nodes and also will increase complexity of setitem on nodes to O(m*l) where m is the number of parents of the current leaf added, and l the number of leaves added (usually one but if you set a dict it will be converted to multiple leaves). On the other hand, it will make items, keys, values, view* and other nodes operations methods as fast as with a ``dict`` by using lookup tables to access direct children directly, which was O(n) where n was the whole list of items at any level in the fdict. It is possible to convert a non-fastview fdict to a fastview fdict, just by supplying it as the initialization dict.
 
 Thus, if you want to do data exploration on a ``fdict``, you can use either of these two approaches to speed up your exploration to a reasonable time, with performances close to a ``dict``. In practice, ``extract`` is better if you have lots of items per nesting level, whereas ``fastview`` might be better if you have a very nested structure with few items per level but lots of levels.
+
+There is probably room for speed optimization, if you have any idea please feel free to open an issue on Github.
+
+In any case, this module is primarily meant to do quick prototypes of bigdata databases, that you can then switch to another faster database after reworking the structure a bit.
+
+A good example is the retrieval of online data: in this case, you care less about the data structure performance since it is negligible compared to network bandwidth and I/O. Then, when you have the data, you can rework it to convert to another type of database with a flat schema (by extracting only the fields you are interested in).
+
+Also you can convert a ``fdict`` or ``sfdict`` to a flat ``dict`` using the ``to_dict()`` method, or to a nested (natural) ``dict`` using ``to_dict_nested()``, you will then get a standard ``dict`` stored in RAM that you can access at full speed, or use as an input to initialize another type of out-of-core database.
 
 LICENCE
 -------------

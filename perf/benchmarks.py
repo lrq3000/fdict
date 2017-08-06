@@ -125,34 +125,34 @@ tests = '''
 ## dict
 # setitem
 benchmark_set(dict, depth=100)
-# getitem
+# getitem+setitem
 benchmark_get(dict, depth=100, d=benchmark_set(dict, depth=100))
 ## fdict
 # setitem
 benchmark_set(fdict, depth=100)
-# getitem
+# getitem+setitem
 benchmark_get(fdict, depth=100, d=benchmark_set(fdict, depth=100))
 ## fdict fastview (skipped because too slow! setitem runs in quadratic time because of metadata building, but can be optimized to run in linear time!)
 # setitem
 #benchmark_set(fdict, depth=100, kwargs={'fastview': True})
-# getitem
+# getitem+setitem
 #benchmark_get(fdict, depth=100, d=benchmark_set(fdict, depth=100, kwargs={'fastview': True}))
 
 ### setitem and getitem direct access, eg, x['a/b/c']
 ## dict
 # setitem
 benchmark_set_direct(dict, depth=100)
-# getitem
+# getitem+setitem
 benchmark_get_direct(dict, depth=100, d=benchmark_set_direct(dict, depth=100))
 ## fdict
 # setitem
 benchmark_set_direct(fdict, depth=100)
-# getitem
+# getitem+setitem
 benchmark_get_direct(fdict, depth=100, d=benchmark_set_direct(fdict, depth=100))
 ## fdict fastview
 # setitem
 #benchmark_set_direct(fdict, depth=100, kwargs={'fastview': True})
-# getitem
+# getitem+setitem
 #benchmark_get_direct(fdict, depth=100, d=benchmark_set_direct(fdict, depth=100, kwargs={'fastview': True}))
 
 ### viewitem
