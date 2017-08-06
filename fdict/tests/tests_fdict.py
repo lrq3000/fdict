@@ -503,6 +503,22 @@ def test_fdict_view_override_rootpath():
     assert list(a.keys(rootpath='a/e')) == ['f']
     assert list(a.items(rootpath='a/e')) == [('f', 4)]
 
+def test_fdict_eq_extended():
+    '''Test fdict equality/inequality'''
+    a = fdict({'a': {'b': 1, 'c': 2}, 'd': 3})
+    # Unequal by size
+    assert a != {'a': 1}
+    assert a != fdict({'a': 1})
+    # Unequal by value
+    assert a != {'a': {'b': 1, 'c': 2}, 'd': -1}
+    assert a != {'a': {'b': 1, 'c': -1}, 'd': 3}
+    # Equal
+    assert a == {'a': {'b': 1, 'c': 2}, 'd': 3}
+    assert a == fdict({'a': {'b': 1, 'c': 2}, 'd': 3})
+    # Equality with subclasses or variants
+    assert a == fdict({'a': {'b': 1, 'c': 2}, 'd': 3}, fastview=True)
+    assert a == sfdict({'a': {'b': 1, 'c': 2}, 'd': 3})
+
 def test_sfdict_basic():
     '''sfdict: basic tests'''
     # Sfdict test

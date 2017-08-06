@@ -520,16 +520,17 @@ class fdict(dict):
         # Note that if using fastmode and you want to compare an extract(), you cannot compare the nodes unless you fdict(d2)!
         is_fdict = isinstance(d2, self.__class__)
         is_dict = isinstance(d2, dict)
-        if not is_dict:
+        if not is_dict and not is_fdict:
+            # If not a dict nor a subclass of fdict, we cannot compare
             return False
         else:
-            if is_fdict and not self.rootpath:
-                # fdict, we can directly compare
+            if is_fdict and not self.rootpath and self.fastview == d2.fastview:
+                # fdict, we can directly compare the internal dicts (but only if fastview is the same for both)
                 return (self.d == d2.d)
             else:
                 kwargs = {}
                 if is_fdict:
-                    if len(self) != len(d2):
+                    if len(self) != len(d2) and self.fastview == d2.fastview:
                         # If size is different then the dicts are different
                         # Note that we need to compare the items because we need to filter if we are looking at nested keys (ie, if there is a rootpath)
                         return False
@@ -548,6 +549,9 @@ class fdict(dict):
                     if not fullkey in self.d or self.d.__getitem__(fullkey) != v:
                         return False
                 return True
+
+    def __ne__(self, d2):
+        return not self == d2  # do not use self.__eq__(d2), for more infos see https://stackoverflow.com/questions/4352244/python-should-i-implement-ne-operator-based-on-eq/30676267#30676267
 
     def __repr__(self, nodes=True):
         # Filter the items if there is a rootpath and return as a new fdict
