@@ -270,9 +270,13 @@ class fdict(dict):
             # and finally add the singleton as a leaf
             self.d.__setitem__(fullkey, value)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key, fullpath=False):
         '''Delete an item in the internal dict, O(1) for any leaf, O(n) for a nested dict'''
-        fullkey = self._build_path(key)
+        if not fullpath:
+            fullkey = self._build_path(key)
+        else:
+            fullkey = key
+
         if fullkey in self.d:
             # Key is a leaf, we can directly delete it
             if self.fastview:
@@ -282,7 +286,7 @@ class fdict(dict):
                     self.d.__getitem__(parentnode).remove(fullkey)
                     if not self.d.__getitem__(parentnode):
                         # if the set is now empty, just delete the node (to signal that there is nothing below now)
-                        self.__delitem__(parentnode)  # recursive delete because the node is referenced by its parent
+                        self.__delitem__(parentnode, fullpath=True)  # recursive delete because the node is referenced by its parent
             # Delete the item!
             return self.d.__delitem__(fullkey)
         else:

@@ -310,15 +310,15 @@ def test_fdict_fastview_del():
     assert not set(a['a/e'].keys()) and not dict(a2['a']['e'])
     assert set(a['a'].keys(fullpath=True, nodes=True)) == set(['a/b/', 'a/b/d', 'a/b/c'])
 
-def test_fdict_metadata_nested_dict():
+def test_fdict_fastview_metadata_nested_dict():
     '''Test fastview nodes metadata creation with nested dicts and at creation'''
     a = fdict({'a/b': 1, 'a/c': set([1,2,3]), 'd': [1, 2, 3]}, fastview=True)
     # add nested dict
     a['g'] = {'h': {'i': {'j': 6}, 'k': 7}, 'l': 8}
     assert a.d == {'g/l': 8, 'g/h/i/j': 6, 'g/h/i/': set(['g/h/i/j']), 'a/': set(['a/b', 'a/c']), 'a/c': set([1, 2, 3]), 'a/b': 1, 'g/h/': set(['g/h/k', 'g/h/i/']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7, 'd': [1, 2, 3]}
 
-def test_fdict_setitem_noconflict_delitem():
-    '''Test fastview setitem replacement of singleton by nested dict and inversely + delitem'''
+def test_fdict_fastview_setitem_noconflict_delitem():
+    '''Test fdict fastview setitem replacement of singleton by nested dict and inversely + delitem'''
     a = fdict({'a/b': 1, 'a/c': set([1,2,3]), 'd': [1, 2, 3]}, fastview=True)
     # singleton to nested dict
     a['d/e'] = 4
@@ -335,6 +335,20 @@ def test_fdict_setitem_noconflict_delitem():
     # delitem nested dict
     del a['d']
     assert a.d == {'a': 2, 'g/l': 8, 'g/h/': set(['g/h/k']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7}
+
+def test_fdict_fastview_delitem():
+    '''Test fdict fastview delitem'''
+    a = fdict({'a': {'b': 1, 'c': set([1, 2]), 'd': {'e': 3}}, 'f': 4}, fastview=True)
+
+    assert a == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/d/': set(['a/d/e']), 'a/d/e': 3, 'a/': set(['a/d/', 'a/c', 'a/b'])}
+    del a['a']['d']['e']
+    assert a == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/': set(['a/c', 'a/b'])}
+    del a['a/c']
+    assert a == {'a/b': 1, 'f': 4, 'a/': set(['a/b'])}
+    del a['a/b']
+    assert a == {'f': 4}
+    del a['f']
+    assert a == {}
 
 def test_fdict_init_fdict():
     '''Test fdict initialization with another fdict'''
