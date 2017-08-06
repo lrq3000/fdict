@@ -509,15 +509,20 @@ def test_fdict_eq_extended():
     # Unequal by size
     assert a != {'a': 1}
     assert a != fdict({'a': 1})
+    assert a['a'] != fdict({'b': 1, 'c': 2, 'e': 4})
     # Unequal by value
     assert a != {'a': {'b': 1, 'c': 2}, 'd': -1}
     assert a != {'a': {'b': 1, 'c': -1}, 'd': 3}
     # Equal
     assert a == {'a': {'b': 1, 'c': 2}, 'd': 3}
     assert a == fdict({'a': {'b': 1, 'c': 2}, 'd': 3})
+    assert a['a'] == {'b': 1, 'c': 2}
+    assert a['a'] == fdict({'b': 1, 'c': 2})
     # Equality with subclasses or variants
     assert a == fdict({'a': {'b': 1, 'c': 2}, 'd': 3}, fastview=True)
+    assert a['a'] == fdict({'b': 1, 'c': 2}, fastview=True)
     assert a == sfdict({'a': {'b': 1, 'c': 2}, 'd': 3})
+    assert a['a'] == sfdict({'b': 1, 'c': 2})
 
 def test_sfdict_basic():
     '''sfdict: basic tests'''
