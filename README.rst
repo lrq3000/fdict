@@ -30,7 +30,7 @@ The ``fdict()`` class provides the basic system allowing to have an internal fla
 
 Note: if you use ``sfdict()``, do not forget to ``.sync()`` and ``.close()`` to commit the changes back to the file.
 
-An alternative based on numpy can be found in the `wendelin.core project <https://github.com/Nexedi/wendelin.core>`__.
+An alternative based on numpy can be found in the `wendelin.core project <https://github.com/Nexedi/wendelin.core>`__, and there is also dask for pandas dataframes.
 
 Differences with dict
 ----------------------------
@@ -42,11 +42,11 @@ The primary difference is that calling `items()`, `keys()`, `values()` and `view
 Performances
 --------------------
 
-``fdict`` was made with maximum compatibility with existing code using ``dict`` and with highly reasonable performances.
+``fdict`` was made with maximum compatibility with existing code using ``dict`` and with reasonable performances. That's in theory, in practice ``fdict`` are slower than ``dict`` for most purposes, except setitem and getitem if you use direct access form (eg, x['a/b/c'] instead of x['a']['b']['c']). There is room to improve performance in practice, benchmarks are available in perf/benchmarks.py.
 
 As such, you can expect O(1) performance just like ``dict`` for any operation on leaves (non-dict objects): getitem, setitem, delitem, eq contains.
 
-In fact, getitem and setitem can be faster than ``dict`` for deeply nested leaves by using the direct path: ``x['a/b/c'] = [1, 2]`` instead of ``x['a']['b']['c'] = [1, 2]``
+In fact, getitem and setitem might be faster than ``dict`` for deeply nested leaves by using the direct path: ``x['a/b/c'] = [1, 2]`` instead of ``x['a']['b']['c'] = [1, 2]``
 
 The drawback comes when you work on nodes (nested dict objects): since all keys are flattened and on the same level, the only way to get only the children of a nested dict (aka a branch) is to walk through all keys and filter out the ones not matching the current branch. This means that any operation on nodes will be in O(n) where n is the total number of items in the whole fdict. Affected operations are: items, keys, values, view*, iter*, delitem on nodes, eq on nodes, contains on nodes.
 
