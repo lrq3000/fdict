@@ -302,12 +302,12 @@ class fdict(dict):
                     self.d.__delitem__(dirkey)
                     flagdel = True
                 # Remove current node from its parent node's set()
-                parentnode = self._get_parent_node(dirkey, self.delimiter)
+                parentnode = self._get_parent_node(fullkey, self.delimiter)
                 if parentnode: # if the node is not 1st-level (because then the parent is the root, it's then a fdict, not a set)
-                    self.d.__getitem__(parentnode).remove(dirkey)
+                    self.d.__getitem__(parentnode).remove(dirkey)  # delete current node metadata
                     if not self.d.__getitem__(parentnode):
                         # if the set is now empty, just delete the node (to signal that there is nothing below now)
-                        self.__delitem__(parentnode)  # recursive delete because the node is referenced by its parent
+                        self.__delitem__(parentnode[:len(parentnode)-1], fullpath=True)  # recursive delete because the node is referenced by its parent
             else:
                 # Walk through all items in the dict and delete the nodes or nested elements starting from the supplied node (if any)
                 keystodel = [k for k in self._viewkeys() if k.startswith(dirkey)]  # TODO: try to optimize with a generator instead of a list, but with viewkeys the dict is changing at the same time so we get runtime error!

@@ -338,6 +338,7 @@ def test_fdict_fastview_setitem_noconflict_delitem():
 
 def test_fdict_fastview_delitem():
     '''Test fdict fastview delitem'''
+    # Test leaf deletion
     a = fdict({'a': {'b': 1, 'c': set([1, 2]), 'd': {'e': 3}}, 'f': 4}, fastview=True)
 
     assert a == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/d/': set(['a/d/e']), 'a/d/e': 3, 'a/': set(['a/d/', 'a/c', 'a/b'])}
@@ -349,6 +350,14 @@ def test_fdict_fastview_delitem():
     assert a == {'f': 4}
     del a['f']
     assert a == {}
+
+    # Test node deletion
+    a = fdict({'a': {'b': {'c': set([1, 2])}}, 'd': 3}, fastview=True)
+    a2 = a.copy()
+    assert a == {'a/b/c': set([1, 2]), 'd': 3, 'a/': set(['a/b/']), 'a/b/': set(['a/b/c'])}
+    del a['a']['b']
+    del a2['a/b']
+    assert a == a2 == {'d': 3}
 
 def test_fdict_init_fdict():
     '''Test fdict initialization with another fdict'''
