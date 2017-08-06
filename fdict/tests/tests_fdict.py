@@ -586,6 +586,75 @@ def test_fdict_eq_extended():
     assert a == sfdict({'a': {'b': 1, 'c': 2}, 'd': 3})
     assert a['a'] == sfdict({'b': 1, 'c': 2})
 
+def test_fdict_not():
+    '''Test fdict truth value (not d)'''
+    a = fdict({'a': 1})
+    b = fdict({})
+    assert (not a) == False
+    assert (not b) == True
+
+def test_fdict_empty_list():
+    '''Test fdict assigning an empty list'''
+    a = fdict({})
+    a['a'] = {}
+    assert a == {}
+    a['b'] = []
+    a['b'].append(1)
+    assert a == {'b': [1]}
+
+def test_fdict_pop_popitem():
+    '''Test fdict pop and popitem'''
+    a = fdict({'a': {'b': 1, 'c': 2}, 'd': 3})
+    a2 = a.copy()
+
+    leaf = a.pop('a/b')
+    assert leaf == 1
+    assert a == {'a/c': 2, 'd': 3}
+    node = a.pop('a')
+    assert node.d == {'a/c': 2}
+    assert a == {'d': 3}
+    inexistent = a.pop('e', 'inexistent!')
+    assert inexistent == 'inexistent!'
+
+
+    a2.popitem()
+    a2.popitem()
+    a2.popitem()
+    try:
+        a2.popitem()
+        assert False
+    except KeyError:
+        assert True
+    else:
+        assert False
+
+def test_fdict_fastview_pop_popitem():
+    '''Test fdict with fastview pop and popitem'''
+    # fastview mode
+    a = fdict({'a': {'b': 1, 'c': 2}, 'd': 3}, fastview=True)
+    a2 = a.copy()
+
+    leaf = a.pop('a/b')
+    assert leaf == 1
+    assert a == {'a/': set(['a/c']), 'a/c': 2, 'd': 3}
+    node = a.pop('a')
+    assert node.d == {'a/c': 2, 'a/': set(['a/c'])}
+    assert a == {'d': 3}
+    inexistent = a.pop('e', 'inexistent!')
+    assert inexistent == 'inexistent!'
+
+
+    a2.popitem()
+    a2.popitem()
+    a2.popitem()
+    try:
+        a2.popitem()
+        assert False
+    except KeyError:
+        assert True
+    else:
+        assert False
+
 def test_sfdict_basic():
     '''sfdict: basic tests'''
     # Sfdict test

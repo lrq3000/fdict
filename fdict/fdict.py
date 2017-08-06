@@ -587,6 +587,41 @@ class fdict(dict):
             except (AttributeError, TypeError):
                 return str(dict(self.items()))
 
+    def pop(self, k, d=None, fullpath=True):
+        fullkey = self._build_path(k)
+        if fullkey in self.d:
+            # Leaf
+            if not self.fastview:
+                res = self.d.pop(fullkey)
+            else:
+                res = self.d.__getitem__(fullkey)
+                self.__delitem__(fullkey, fullpath=True)  # need to rebuild the metadata
+        else:
+            # Node
+            if self.fastview and fullkey+self.delimiter not in self.d:
+                res = None
+            else:
+                # We can check with fastview if the node exists beforehand
+                res = self.__getitem__(k).extract(fullpath=fullpath)
+                if res:
+                    self.__delitem__(fullkey, fullpath=True)
+
+        if res:
+            return res
+        else:
+            return d
+
+    def popitem(self):
+        if not self.fastview:
+            return self.d.popitem()
+        else:
+            try:
+                k, v = next(self.viewitems(fullpath=False, nodes=False))
+                self.__delitem__(k)  # need to update the metadata
+                return k, v
+            except StopIteration:
+                raise KeyError('popitem(): dictionary is empty')
+
     def to_dict(self):
         '''Convert to a flattened dict'''
         return dict(self.items())
