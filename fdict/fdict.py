@@ -191,8 +191,9 @@ class fdict(dict):
         if fullkeys is None:
             fullkeys = list(self._generickeys(self.d))  # need to make a copy else RuntimeError because dict size will change
 
+        delimiter = self.delimiter
         for fullkey in fullkeys:
-            if not fullkey.endswith(self.delimiter):
+            if not fullkey[-1:] == delimiter:
                 # Fastview mode: create additional entries for each parent at every depths of the current leaf
                 parents = self._get_all_parent_nodes(fullkey, self.delimiter)
 
@@ -229,8 +230,13 @@ class fdict(dict):
 
             # First we need to delete the previous value if it was a singleton or a node
             # (so we also need to delete all subitems recursively if it was a node)
-            if fullkey in self:
-                self.__delitem__(key)
+            if not self.fastview:
+                if fullkey in self.d:
+                    # With non-fastview fdict, can only delete singleton, not nodes
+                    self.d.__delitem__(key)
+            else:
+                if fullkey in self:
+                    self.__delitem__(key)
 
             # Flatten dict and store its leaves
             if not value:
@@ -344,16 +350,17 @@ class fdict(dict):
             # Allow to override rootpath, particularly useful for delitem (which is always called from parent, so the rootpath is incorrect, overriding the rootpath allows to limit the search breadth)
             rootpath = self.rootpath
 
+        delimiter = self.delimiter
         if not rootpath:
             if self.fastview:
                 for k in self._viewkeys():
-                    if not k.endswith(self.delimiter) or nodes:
+                    if not k[-1:] == delimiter or nodes:
                         yield k
             else:
                 for k in self._viewkeys():
                     yield k
         else:
-            pattern = rootpath+self.delimiter
+            pattern = rootpath+delimiter
             lpattern = len(pattern) if not fullpath else 0 # return the shortened path or fullpath?
             if self.fastview:
                 # Fastview mode
@@ -362,7 +369,7 @@ class fdict(dict):
                     children.update(self.d.__getitem__(pattern).copy())
                     while children:
                         child = children.pop()
-                        if child.endswith(self.delimiter):
+                        if child[-1:] == delimiter:
                             # Node, append all the subchildren to the stack
                             children.update(self.d.__getitem__(child))
                             if nodes:
@@ -379,12 +386,13 @@ class fdict(dict):
             # Allow to override rootpath, particularly useful for delitem (which is always called from parent, so the rootpath is incorrect, overriding the rootpath allows to limit the search breadth)
             rootpath = self.rootpath
 
+        delimiter = self.delimiter
         if not rootpath:
             # Return all items (because no rootpath, so no filter)
             if self.fastview:
                 # Fastview mode, filter out nodes (ie, keys ending with delimiter) to keep only leaves
                 for k,v in self._viewitems():
-                    if not k.endswith(self.delimiter) or nodes:
+                    if not k[-1:] == delimiter or nodes:
                         yield k,v
             else:
                 # No fastview, just return the internal dict's items
@@ -402,7 +410,7 @@ class fdict(dict):
                     children.update(self.d.__getitem__(pattern))
                     while children:
                         child = children.pop()
-                        if child.endswith(self.delimiter):
+                        if child[-1:] == delimiter:
                             # Node, append all the subchildren to the stack
                             children.update(self.d.__getitem__(child))
                             if nodes:
@@ -420,10 +428,11 @@ class fdict(dict):
             # Allow to override rootpath, particularly useful for delitem (which is always called from parent, so the rootpath is incorrect, overriding the rootpath allows to limit the search breadth)
             rootpath = self.rootpath
 
+        delimiter = self.delimiter
         if not rootpath:
             if self.fastview:
                 for k,v in self._viewitems():
-                    if not k.endswith(self.delimiter) or nodes:
+                    if not k[-1:] == delimiter or nodes:
                         yield v
             else:
                 for v in self._viewvalues():
@@ -438,7 +447,7 @@ class fdict(dict):
                     children.update(self.d.__getitem__(pattern))
                     while children:
                         child = children.pop()
-                        if child.endswith(self.delimiter):
+                        if child[-1:] == delimiter:
                             # Node, append all the subchildren to the stack
                             children.update(self.d.__getitem__(child))
                             if nodes:

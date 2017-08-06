@@ -1,5 +1,5 @@
 fdict
-====
+=====
 
 |PyPI-Status| |PyPI-Versions|
 
@@ -10,19 +10,32 @@ fdict
 
 Easy out-of-core computing with recursive data structures in Python with a drop-in dict replacement. Just use ``sfdict()`` instead of ``dict()``, you are good to go!
 
-``fdict`` can be initialized with a standard ``dict``:
+``fdict`` and ``sfdict`` can be initialized with a standard ``dict``:
 
-``d = fdict({'a': {'b': 1, 'c': [2, 3]}, 'd': 4})``
+.. code:: python
+
+    from fdict import fdict, sfdict
+    d = fdict({'a': {'b': 1, 'c': [2, 3]}, 'd': 4})
+
+``Out: {'a/c': [2, 3], 'd': 4, 'a/b': 1}``
 
 Nested dicts will be converted on-the-fly:
 
-``d['e'] = {'f': {'g': {'h': 5}}}``
+.. code:: python
+
+    d['e'] = {'f': {'g': {'h': 5}}}
+
+``Out: {'e/f/g/h': 5, 'a/c': [2, 3], 'd': 4, 'a/b': 1}``
 
 And it can be converted back to a dict at any time:
 
-``d.to_dict_nested()``
+.. code:: python
 
-The intention of this module is to provide a very easy and pythonic data structure to do out-of-core computing of very nested/recursive big data, while still having reasonable good performances. Currently, no other library can do out-of-core computing of very recursive data, because they all serialize at 1st level nodes.
+    d.to_dict_nested()
+
+``Out: {'a': {'c': [2, 3], 'b': 1}, 'e': {'f': {'g': {'h': 5}}}, 'd': 4}``
+
+The intention of this module is to provide a very easy and pythonic data structure to do out-of-core computing of very nested/recursive big data, while still having reasonably acceptable performances. Currently, no other library can do out-of-core computing of very recursive data, because they all serialize at 1st level nodes. Hence, the goal is to provide a very easy way to prototype out-of-core applications, which you can later replace with a faster datatype.
 
 Hence, this module provides ``fdict()`` and ``sfdict()``, which both provide a similar interface to ``dict()`` with flattened keys for the first and out-of-core storage for the second (using native ``shelve`` library). There is no third-party dependancy.
 
@@ -39,14 +52,39 @@ Although maximum compatibility was the primary goal, a different implementation 
 
 The primary difference is that calling `items()`, `keys()`, `values()` and `view*` methods will return all children leaves nested at any level, whereas a dict returns only the direct children. Also, by default, these methods return only leaves (non-dict objects) and not nodes, although you can override this by suppling the `nodes=True` argument.
 
+Another difference is conflicts: you can have an item being both a leaf and a node, because there is no way to check that there is no node without walking all items (ie, using ``viewitems()``, and this method is the limitation of ``fdict`` data structure).
+
+This also means that when assigning an item that was already assigned, nodes will NOT get replaced, but singleton will be correctly replaced. To be more explicit:
+
+This works:
+
+.. code:: python
+
+    d = fdict({'a': 1, 'b': {'c': 2}})
+    d['a'] = -1
+    print(d)
+    d['a'] = {'d': 3, 'e': 4}
+    print(d)
+
+``{'a': -1, 'b/c': 2}
+{'a/d': 3, 'a/e': 4, 'b/c': 2}``
+
+But this does NOT work as expected:
+
+.. code:: python
+
+    d = fdict({'a': 1, 'b': {'c': 2}})
+    d['b'] = -1
+    print(d)
+
+``{'a': 1, 'b': -1, 'b/c': 2}``
+
 Performances
 --------------------
 
-``fdict`` was made with maximum compatibility with existing code using ``dict`` and with reasonable performances. That's in theory, in practice ``fdict`` are slower than ``dict`` for most purposes, except setitem and getitem if you use direct access form (eg, x['a/b/c'] instead of x['a']['b']['c']). There is room to improve performance in practice, benchmarks are available in perf/benchmarks.py.
+``fdict`` was made with maximum compatibility with existing code using ``dict`` and with reasonable performances. That's in theory, in practice ``fdict`` are slower than ``dict`` for most purposes, except setitem and getitem if you use direct access form (eg, x['a/b/c'] instead of x['a']['b']['c']).
 
-As such, you can expect O(1) performance just like ``dict`` for any operation on leaves (non-dict objects): getitem, setitem, delitem, eq contains.
-
-In fact, getitem and setitem might be faster than ``dict`` for deeply nested leaves by using the direct path: ``x['a/b/c'] = [1, 2]`` instead of ``x['a']['b']['c'] = [1, 2]``
+As such, you can expect O(1) performance just like ``dict`` for any operation on leaves (non-dict objects): getitem, setitem, delitem, eq contains. In practice, ``fdict`` is about 10x slower than ``dict`` using indirect access on leaves (ie, x['a']['b']['c']), and is as fast as ``dict`` using direct access (ie, x['a/b/c']).
 
 The drawback comes when you work on nodes (nested dict objects): since all keys are flattened and on the same level, the only way to get only the children of a nested dict (aka a branch) is to walk through all keys and filter out the ones not matching the current branch. This means that any operation on nodes will be in O(n) where n is the total number of items in the whole fdict. Affected operations are: items, keys, values, view*, iter*, delitem on nodes, eq on nodes, contains on nodes.
 
