@@ -415,18 +415,56 @@ def test_fdict_setitem_update_fdict():
     a2 = a.copy()
     a3 = a.copy()
     a4 = a.copy()
+    a5 = a.copy()
+    a6 = a.copy()
 
     b1 = fdict({'b': 2, 'd': 3})
     b2 = {'b': 2, 'd': 3}
+    b3 = fdict({'e': {'f': 4}})
 
     a1['a'] = b1
     a2['a'] = b2
+    a3['a'] = b3['e']
     assert a1 == a2 == {'a/d': 3, 'a/b': 2}
     assert ('a/c', set([1, 2])) not in a1.items()
-    a3['a'].update(b1)
-    a4['a'].update(b2)
-    assert a3 == a4 == {'a/d': 3, 'a/c': set([1, 2]), 'a/b': 2}
-    assert ('a/c', set([1, 2])) in a3.items()
+    assert ('a/c', set([1, 2])) not in a2.items()
+    assert a3 == {'a/f': 4}
+    a4['a'].update(b1)
+    a5['a'].update(b2)
+    a6['a'].update(b3['e'])
+    assert a4 == a5 == {'a/d': 3, 'a/c': set([1, 2]), 'a/b': 2}
+    assert ('a/c', set([1, 2])) in a4.items()
+    assert ('a/c', set([1, 2])) in a5.items()
+    assert a6 == {'a/f': 4, 'a/c': set([1, 2]), 'a/b': 1}
+
+def test_fdict_setitem_update_fdict_fastview():
+    '''Test fdict fastview setitem+update with another fdict or dict'''
+    a = fdict({'a': {'b': 1, 'c': set([1, 2])}}, fastview=True)
+    a1 = a.copy()
+    a2 = a.copy()
+    a3 = a.copy()
+    a4 = a.copy()
+    a5 = a.copy()
+    a6 = a.copy()
+
+    b1 = fdict({'b': 2, 'd': 3})
+    b2 = {'b': 2, 'd': 3}
+    b3 = fdict({'e': {'f': 4}}, fastview=True)
+
+    a1['a'] = b1
+    a2['a'] = b2
+    a3['a'] = b3['e']
+    assert a1 == a2 == {'a/d': 3, 'a/b': 2, 'a/': set(['a/d', 'a/b'])}
+    assert ('a/c', set([1, 2])) not in a1.items()
+    assert ('a/c', set([1, 2])) not in a2.items()
+    assert a3 == {'a/f': 4, 'a/': set(['a/f'])}
+    a4['a'].update(b1)
+    a5['a'].update(b2)
+    a6['a'].update(b3['e'])
+    assert a4 == a5 == {'a/d': 3, 'a/c': set([1, 2]), 'a/b': 2, 'a/': set(['a/c', 'a/b', 'a/d'])}
+    assert ('a/c', set([1, 2])) in a4.items() and 'a/d' in a4.d['a/']
+    assert ('a/c', set([1, 2])) in a5.items() and 'a/d' in a5.d['a/']
+    assert a6 == {'a/f': 4, 'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/f', 'a/c', 'a/b'])}
 
 def test_fdict_update_exception():
     '''Test fdict update exception if supplied non-dict object'''

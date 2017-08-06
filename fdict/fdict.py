@@ -241,7 +241,8 @@ class fdict(dict):
                 # merge d2 with self.d
                 if isinstance(value, self.__class__):
                     # If it is the same class as this, we merge
-                    self.update(self.__class__({key: value}))
+                    d2 = self.__class__({key: value})
+                    self.update(d2)
                 else:
                     # If this is just a normal dict, we flatten it and merge
                     d2 = self.flatkeys({self._build_path(prepend=key) : value}, sep=self.delimiter)
@@ -465,10 +466,12 @@ class fdict(dict):
         if isinstance(d2, self.__class__):
             # Same class, we walk d2 but we cut d2 rootpath (fullpath=False) since we will rebase on our own self.d dict
             d2items = d2.viewitems(fullpath=False, nodes=False)  # ensure we do not add nodes, we need to rebuild anyway
+            d2keys = d2.viewkeys(fullpath=False, nodes=False)  # duplicate for reuse
         elif isinstance(d2, dict):
             # normal dict supplied
             d2 = self.flatkeys(d2, sep=self.delimiter) # first, flatten the dict keys
             d2items = self._genericitems(d2)
+            d2keys = self._generickeys(d2)
         else:
             raise ValueError('Supplied argument is not a dict.')
 
@@ -481,12 +484,12 @@ class fdict(dict):
             if isinstance(d2, self.__class__):
                 rtncode = self.d.update(d2items)
             else:
-                rtncode = self.d.update(d2)
+                rtncode = self.d.update(d2items)
 
         # Fastview mode: we have to take care of nodes, since they are set(), they will get replaced and we might lose some pointers as they will all be replaced by d2's pointers, so we have to merge them separately
         # The only solution is to skip d2 nodes altogether and rebuild the metadata for each new leaf added. This is faster than trying to merge separately each d2 set with self.d, because anyway we also have to rebuild for d2 root nodes (which might not be self.d root nodes particularly if rootpath is set)
         if self.fastview:
-            self._build_metadata((self._build_path(k), v) for k,v in d2items)
+            self._build_metadata(self._build_path(k) for k in d2keys)
 
         return rtncode
 
