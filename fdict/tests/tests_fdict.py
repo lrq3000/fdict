@@ -561,9 +561,11 @@ def test_sfdict_autosync():
     '''Test sfdict autosync'''
     # With autosync, updating a nested object is saved to disk
     g = sfdict(d={'a': {'b': set([1, 2])}}, autosync=True)
+    assert 'shelve' in str(type(g.d)) or 'instance' in str(type(g.d))  # check the internal dict is a db shelve
     g['a']['b'].add(3)
     assert g['a/b'] == set([1, 2, 3])
     g['d'] = 4  # trigger the autosync on setitem
+    assert g == {'a/b': set([1, 2, 3]), 'd': 4}
     filename = g.get_filename()
     # try to access the same shelve before closing/syncing it
     h = sfdict(filename=filename)
