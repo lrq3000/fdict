@@ -132,8 +132,8 @@ Also you can convert a ``fdict`` or ``sfdict`` to a flat ``dict`` using the ``to
 Documentation
 -------------
 
-fdict
-~~~~~
+fdict class
+~~~~~~~~~~~
 
 .. code:: python
 
@@ -177,8 +177,8 @@ Returns:
 
 * out  : dict-like object.
 
-sfdict
-~~~~~~
+sfdict class
+~~~~~~~~~~~~
 
 .. code:: python
 
