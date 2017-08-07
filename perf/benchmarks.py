@@ -74,6 +74,7 @@ def benchmark_get(dclass, breadth=5, depth=1000, d=None, args=None, kwargs=None)
     for _ in _range(depth):
         for j in _range(breadth):
             x = di[str(j)]
+            x += 1
         di = di[str(breadth)]
     return d
 
@@ -103,11 +104,11 @@ def benchmark_get_direct(dclass, breadth=5, depth=1000, d=None, delimiter='/', a
     if d is None:
         d = benchmark_set_direct(dclass, breadth=breadth, depth=depth, delimiter=delimiter, args=args, kwargs=kwargs)
     rootpath = ''
-    x = None
     for i in _range(depth):
         delim = (delimiter if i>0 else '')
         for j in _range(breadth):
             x = d[rootpath+delim+str(j)]
+            x += 1
         rootpath += delim+str(breadth)
     return d
 
