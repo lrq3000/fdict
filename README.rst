@@ -35,6 +35,23 @@ And it can be converted back to a dict at any time:
 
 ``Out: {'a': {'c': [2, 3], 'b': 1}, 'e': {'f': {'g': {'h': 5}}}, 'd': 4}``
 
+To store all items on disk (out-of-core computing), use ``sfdict``, a subclass of ``fdict`` using ``shelve`` internally:
+
+.. code:: python
+
+    # Initialize an empty database in file myshelf.db
+    d = sfdict(filename='myshelf.db')
+    d['a'] = {'b': 1, 'c': [2, 3]}
+    d.sync()  # synchronize all changes back to disk
+    d.close()  # should always close a db
+
+    # Reopen the same database
+    d2 = sfdict(filename='myshelf.db')
+    print(d2)
+    d2.close()
+
+``Out: {'a/b': 1, 'a/c': [2, 3]}``
+
 The intention of this module is to provide a very easy and pythonic data structure to do out-of-core computing of very nested/recursive big data, while still having reasonably acceptable performances. Currently, no other library can do out-of-core computing of very recursive data, because they all serialize at 1st level nodes. Hence, the goal is to provide a very easy way to prototype out-of-core applications, which you can later replace with a faster datatype.
 
 Hence, this module provides ``fdict()`` and ``sfdict()``, which both provide a similar interface to ``dict()`` with flattened keys for the first and out-of-core storage for the second (using native ``shelve`` library). There is no third-party dependancy.
@@ -66,8 +83,8 @@ This works:
     d['a'] = {'d': 3, 'e': 4}
     print(d)
 
-``{'a': -1, 'b/c': 2}
-{'a/d': 3, 'a/e': 4, 'b/c': 2}``
+``{'a': -1, 'b/c': 2}``
+``{'a/d': 3, 'a/e': 4, 'b/c': 2}``
 
 But this does NOT work as expected:
 
@@ -84,7 +101,7 @@ Performances
 
 ``fdict`` was made with maximum compatibility with existing code using ``dict`` and with reasonable performances. That's in theory, in practice ``fdict`` are slower than ``dict`` for most purposes, except setitem and getitem if you use direct access form (eg, x['a/b/c'] instead of x['a']['b']['c']).
 
-As such, you can expect O(1) performance just like ``dict`` for any operation on leaves (non-dict objects): getitem, setitem, delitem, eq contains. In practice, ``fdict`` is about 10x slower than ``dict`` because of class overhead and key string manipulation, for both indirect access (ie, x['a']['b']['c']) and direct access on leaves (ie, x['a/b/c']). There is no noticeable performance advantage to either kind of access, so you can use the one that pleases you the most. This performance cost is acceptable for a quick prototype of a bigdata database, since building and retrieving items are the most common operations.
+As such, you can expect O(1) performance just like ``dict`` for any operation on leaves (non-dict objects): getitem, setitem, delitem, eq contains. In practice, ``fdict`` is about 10x slower than ``dict`` because of class overhead and key string manipulation, for both indirect access (ie, ``x['a']['b']['c']``) and 3x slower for direct access on leaves (ie, ``x['a/b/c']``). Thus direct access form might be preferable if you want a faster set and get. This performance cost is acceptable for a quick prototype of a bigdata database, since building and retrieving items are the most common operations.
 
 The major drawback comes when you work on nodes (nested dict objects): since all keys are flattened and on the same level, the only way to get only the children of a nested dict (aka a branch) is to walk through all keys and filter out the ones not matching the current branch. This means that any operation on nodes will be in O(n) where n is the total number of items in the whole fdict. Affected operations are: items, keys, values, view*, iter*, delitem on nodes, eq on nodes, contains on nodes.
 
