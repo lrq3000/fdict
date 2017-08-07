@@ -270,7 +270,7 @@ def test_fdict_fastview_basic():
 
     # test fastview copy
     from copy import deepcopy
-    assert a == {'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}
+    assert a.d == {'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}
     a2 = a.copy()
     for k in a.d.keys():
         if k.endswith(a.delimiter):
@@ -284,7 +284,7 @@ def test_fdict_fastview_basic():
             if hasattr(a.d[k], '__len__'):  # compare only collections (because for scalars we can't know if Python caches, or at least I did not find how to check that)
                 assert id(a.d[k]) != id(a3.d[k])  # could replace by equivalent: a.d[k] is not a3.d[k]
     # check that a is unchanged after copy
-    assert a == {'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}
+    assert a.d == {'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}
     # test deepcopy of a nested dict with a different delimiter
     if sys.version_info >= (2,7):
         b = fdict({'a': {'b': 1, 'c': set([1, 2])}, 'd': 3}, delimiter='.', fastview=True)
@@ -299,14 +299,15 @@ def test_fdict_fastview_del():
     assert set(a['a'].keys(fullpath=True, nodes=True)) == set(['a/e/', 'a/e/g/', 'a/b/', 'a/b/c', 'a/b/d', 'a/e/f', 'a/e/g/i', 'a/e/g/h'])
     del a['a/e/g/h']
     del a2['a']['e']['g']['h']
-    assert a == a2 == {'a/e/g/': set(['a/e/g/i']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5}
+    assert a.d == a2.d == {'a/e/g/': set(['a/e/g/i']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5}
     assert 'a/e/g/h' not in list(a['a'].keys(fullpath=True, nodes=True))
     # node deletion
     assert set(a['a/e'].keys()) == set(a2['a']['e'].keys()) == set(['g/i', 'f'])
     assert set(a['a/e'].keys(nodes=True)) == set(a['a']['e'].keys(nodes=True)) == set(['g/', 'g/i', 'f'])
     del a['a/e']
     del a2['a']['e']
-    assert a == a.d == a2 == a2.d == {'a/': set(['a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d'])}
+    assert a.d == a2.d == {'a/': set(['a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d'])}
+    assert a == a2 == {'a/b/c': 1, 'a/b/d': 2}
     assert not set(a['a/e'].keys()) and not dict(a2['a']['e'])
     assert set(a['a'].keys(fullpath=True, nodes=True)) == set(['a/b/', 'a/b/d', 'a/b/c'])
 
@@ -341,23 +342,23 @@ def test_fdict_fastview_delitem():
     # Test leaf deletion
     a = fdict({'a': {'b': 1, 'c': set([1, 2]), 'd': {'e': 3}}, 'f': 4}, fastview=True)
 
-    assert a == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/d/': set(['a/d/e']), 'a/d/e': 3, 'a/': set(['a/d/', 'a/c', 'a/b'])}
+    assert a.d == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/d/': set(['a/d/e']), 'a/d/e': 3, 'a/': set(['a/d/', 'a/c', 'a/b'])}
     del a['a']['d']['e']
-    assert a == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/': set(['a/c', 'a/b'])}
+    assert a.d == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/': set(['a/c', 'a/b'])}
     del a['a/c']
-    assert a == {'a/b': 1, 'f': 4, 'a/': set(['a/b'])}
+    assert a.d == {'a/b': 1, 'f': 4, 'a/': set(['a/b'])}
     del a['a/b']
-    assert a == {'f': 4}
+    assert a.d == {'f': 4}
     del a['f']
-    assert a == {}
+    assert a.d == a == {}
 
     # Test node deletion
     a = fdict({'a': {'b': {'c': set([1, 2])}}, 'd': 3}, fastview=True)
     a2 = a.copy()
-    assert a == {'a/b/c': set([1, 2]), 'd': 3, 'a/': set(['a/b/']), 'a/b/': set(['a/b/c'])}
+    assert a.d == a2.d == {'a/b/c': set([1, 2]), 'd': 3, 'a/': set(['a/b/']), 'a/b/': set(['a/b/c'])}
     del a['a']['b']
     del a2['a/b']
-    assert a == a2 == {'d': 3}
+    assert a.d == a2.d == {'d': 3}
 
 def test_fdict_init_fdict():
     '''Test fdict initialization with another fdict'''
@@ -371,7 +372,8 @@ def test_fdict_init_tuples():
     a = fdict([('a', {'b': 1, 'c': set([1, 2])})])
     assert a == {'a/c': set([1, 2]), 'a/b': 1}
     a = fdict([('a', {'b': 1, 'c': set([1, 2])})], fastview=True)  # fastview mode
-    assert a == {'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/c', 'a/b'])}
+    assert a == {'a/c': set([1, 2]), 'a/b': 1}
+    assert a.d == {'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/c', 'a/b'])}
 
 def test_fdict_str_repr():
     '''Test fdict str and repr'''
@@ -392,8 +394,8 @@ def test_fdict_str_repr():
     a.d = convert_sets_to_lists(a.d)
     # cannot use ast for asub with fastview because of nodes, they will always be shown as sets (unless we extract but then there is no rootpath and we cannot test this branch)
     assert ast.literal_eval(str(a)) == ast.literal_eval(repr(a)) == a.d
-    assert "'d/'" in str(asub) and "'c': [1, 2]" in str(asub) and "'b': 1" in str(asub) and "'d/e': 1" in str(asub)
-    assert "'d/'" in repr(asub) and "'c': [1, 2]" in repr(asub) and "'b': 1" in repr(asub) and "'d/e': 1" in repr(asub)
+    assert "'d/'" not in str(asub) and  "'c': [1, 2]" in str(asub) and "'b': 1" in str(asub) and "'d/e': 1" in str(asub)
+    assert "'d/'" in repr(asub) and "'c': [1, 2]" in repr(asub) and "'b': 1" in repr(asub) and "'d/e': 1" in repr(asub)  # nodes are present in repr but not in str
 
 def test_fdict_str_nodict():
     '''Test fdict string representation and repr if provided an internal dict-like object that has no str method'''
@@ -428,7 +430,7 @@ def test_fdict_extract_fastview():
     assert asub.d == {'a/d/': set(['a/d/e']), 'a/c': [1, 2], 'a/b': 1, 'a/': set(['a/d/', 'a/c', 'a/b']), 'a/d/e': 1}
 
     asub2 = a['a'].extract(fullpath=False)
-    assert asub2 == {'d/': set(['d/e']), 'c': [1, 2], 'b': 1, 'd/e': 1}
+    assert asub2 == {'c': [1, 2], 'b': 1, 'd/e': 1}
     assert asub2.d == {'d/': set(['d/e']), 'c': [1, 2], 'b': 1, 'd/e': 1}
 
 def test_fdict_setitem_update_fdict():
@@ -478,17 +480,17 @@ def test_fdict_setitem_update_fdict_fastview():
     a1['a'] = b1
     a2['a'] = b2
     a3['a'] = b3['e']
-    assert a1 == a2 == {'a/d': 3, 'a/b': 2, 'a/': set(['a/d', 'a/b'])}
+    assert a1.d == a2.d == {'a/d': 3, 'a/b': 2, 'a/': set(['a/d', 'a/b'])}
     assert ('a/c', set([1, 2])) not in a1.items()
     assert ('a/c', set([1, 2])) not in a2.items()
-    assert a3 == {'a/f': 4, 'a/': set(['a/f'])}
+    assert a3.d == {'a/f': 4, 'a/': set(['a/f'])}
     a4['a'].update(b1)
     a5['a'].update(b2)
     a6['a'].update(b3['e'])
-    assert a4 == a5 == {'a/d': 3, 'a/c': set([1, 2]), 'a/b': 2, 'a/': set(['a/c', 'a/b', 'a/d'])}
+    assert a4.d == a5.d == {'a/d': 3, 'a/c': set([1, 2]), 'a/b': 2, 'a/': set(['a/c', 'a/b', 'a/d'])}
     assert ('a/c', set([1, 2])) in a4.items() and 'a/d' in a4.d['a/']
     assert ('a/c', set([1, 2])) in a5.items() and 'a/d' in a5.d['a/']
-    assert a6 == {'a/f': 4, 'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/f', 'a/c', 'a/b'])}
+    assert a6.d == {'a/f': 4, 'a/c': set([1, 2]), 'a/b': 1, 'a/': set(['a/f', 'a/c', 'a/b'])}
 
 def test_fdict_update_exception():
     '''Test fdict update exception if supplied non-dict object'''
@@ -636,7 +638,7 @@ def test_fdict_fastview_pop_popitem():
 
     leaf = a.pop('a/b')
     assert leaf == 1
-    assert a == {'a/': set(['a/c']), 'a/c': 2, 'd': 3}
+    assert a.d == {'a/': set(['a/c']), 'a/c': 2, 'd': 3}
     node = a.pop('a')
     assert node.d == {'a/c': 2, 'a/': set(['a/c'])}
     assert a == {'d': 3}
@@ -654,6 +656,70 @@ def test_fdict_fastview_pop_popitem():
         assert True
     else:
         assert False
+
+def test_fdict_nodel_mode():
+    '''Test fdict nodel mode'''
+    # Test view* methods in nodel mode
+    a = fdict({'a': {'b': 1, 'c': 2, 'd': {'e': 3}}, 'f': 4}, nodel=True)
+    assert set(a.keys()) == set(['a/c', 'a/b', 'a/d/e', 'f'])
+    assert set(a.keys(nodes=True)) == set(['a/d/', 'a/c', 'a/b', 'a/', 'a/d/e', 'f'])
+    assert set(a['a'].keys()) == set(['c', 'b', 'd/e'])
+    assert set(a['a'].keys(nodes=True)) == set(['d/', 'c', 'b', 'd/e'])
+
+    assert set(a.values()) == set([2, 1, 4, 3])
+    assert set(a.values(nodes=True)) == set([2, 1, 4, None, 3, None])
+    assert set(a['a'].values()) == set([2, 1, 3])
+    assert set(a['a'].values(nodes=True)) == set([2, 1, None, 3])
+
+    assert dict(a.items()) == {'a/d/e': 3, 'a/c': 2, 'a/b': 1, 'f': 4}
+    assert dict(a.items(nodes=True)) == {'a/c': 2, 'a/b': 1, 'f': 4, 'a/d/': None, 'a/d/e': 3, 'a/': None}
+    assert dict(a['a'].items()) == {'c': 2, 'b': 1, 'd/e': 3}
+    assert dict(a['a'].items(nodes=True)) == {'d/': None, 'c': 2, 'b': 1, 'd/e': 3}
+
+    # Test normal fdict stripped of viewkeys(), should not detect nodes anymore
+    a = fdict({'a': {'b': 1, 'c': 2}}, nodel=False)
+    a.viewkeys = lambda *args, **kwargs: []
+    assert not ('a' in a)
+
+    # Test nodel fdict, stripped of viewkeys() it will still find nodes (because nodes are signalled by creating an empty key)
+    a = fdict({'a': {'b': 1, 'c': 2}}, nodel=True)
+    b = fdict(nodel=True)
+    c = fdict(nodel=True)
+    b['a'] = {'b': 1, 'c': 2}
+    c.update({'a': {'b': 1, 'c': 2}})
+    a.viewkeys = lambda *args, **kwargs: []
+    a.viewkeys()
+    assert ('a' in a) and ('a/' in a)
+    assert ('a' in b) and ('a/' in b)
+    assert ('a' in c) and ('a/' in c)
+    assert not ('x' in a) and not ('x' in b) and not ('x' in c)  # just to check it does not just return True for any inexistent node...
+    assert ('a/b') in a and ('a/b') in b and ('a/c') in a
+
+    # delitem cannot work in nodel mode
+    del a['a']
+    assert a.d == {'a/c': 2, 'a/b': 1, 'a/': None}
+
+    # check metadata building
+    a = fdict(nodel=True)
+    a._build_metadata_nodel(fullkeys=['x/y', 'x/w/', 'z/'])  # should not create parents for nodes such as x/w/
+    assert a.d == {'x/': None}
+
+    # check metadata building by assignment + is not created twice for same parent
+    a = fdict(nodel=True)
+    a['a/b'] = 1
+    a['a']['c'] = 2
+    assert a == {'a/b': 1, 'a/c': 2}
+    assert a.d == {'a/': None, 'a/c': 2, 'a/b': 1}
+    # Test equality
+    a = fdict({'a': {'b': 1, 'c': 2}}, nodel=True)
+    b = fdict({'a': {'b': 1, 'c': 2}}, nodel=True)
+    c = fdict({'a': {'b': 1, 'c': 2}}, nodel=False)
+    d = fdict({'a': {'b': 1, 'c': 2, 'd': 3}}, nodel=True)
+    assert a == {'a': {'b': 1, 'c': 2}}  # with no nodes, should accept this representation
+    assert a.d == {'a/': None, 'a/c': 2, 'a/b': 1}
+    assert a == b
+    assert a == c
+    assert not (a == d) and a != d  # test inequality
 
 def test_sfdict_basic():
     '''sfdict: basic tests'''

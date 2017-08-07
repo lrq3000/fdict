@@ -47,17 +47,48 @@ __all__ = ['fdict', 'sfdict']
 
 
 class fdict(dict):
-    '''Flattened nested dict, all items are settable and gettable through ['item1']['item2'] standard form or ['item1/item2'] internal form.
+    '''
+    Flattened nested dict, all items are settable and gettable through ['item1']['item2'] standard form or ['item1/item2'] internal form.
     This allows to replace the internal dict with any on-disk storage system like a shelve's shelf (great for huge nested dicts that cannot fit into memory).
     Main limitation: an entry can be both a singleton and a nested fdict: when an item is a singleton, you can setitem to replace to a nested dict, but if it is a nested dict and you setitem it to a singleton, both will coexist. Except for fastview mode, there is no way to know if a nested dict exists unless you walk through all items, which would be too consuming for a simple setitem. In this case, a getitem will always return the singleton, but nested leaves can always be accessed via items() or by direct access (eg, x['a/b/c']).
 
     Fastview mode: remove conflicts issue and allow for fast O(m) contains(), delete() and view*() (such as vieitems()) where m in the number of subitems, instead of O(n) where n was the total number of elements in the fdict(). Downside is setitem() being O(m) too because of nodes metadata building, and memory/storage overhead, since we store all nodes and leaves lists in order to allow for fast lookup.
     '''
-    def __init__(self, d=None, rootpath='', delimiter='/', fastview=False, **kwargs):
+    def __init__(self, d=None, rootpath='', delimiter='/', fastview=False, nodel=False, **kwargs):
+        '''
+        Parameters
+        ----------
+        d  : dict, optional
+            Initialize with a pre-existing dict.
+            Also used internally to pass a reference to parent fdict.
+        rootpath : str, optional
+            Internal variable, define the nested level.
+        delimiter  : str, optional
+            Internal delimiter for nested levels. Can also be used for
+            getitem direct access (e.g. ``x['a/b/c']``).
+            [default : '/']
+        fastview  : bool, optional
+            Activates fastview mode, which makes setitem slower
+            in O(m*l) instead of O(1), but makes view* methods
+            (viewitem, viewkeys, viewvalues) as fast as dict's.
+            [default : False]
+        nodel  : bool, optional
+            Activates nodel mode, which makes contains test
+            in O(1) for nodes (leaf test is always O(1) in any mode).
+            Only drawback: delitem is not suppressed.
+            Useful for quick building of databases, then you can
+            reopen the database with a normal fdict if you want
+            the ability to delitem.
+            [default : False]
+        Returns
+        -------
+        out  : dict-like object.
+        '''
         # Init self parameters
         self.rootpath = rootpath
         self.delimiter = delimiter
         self.fastview = fastview
+        self.nodel = nodel
         self.kwargs = kwargs  # store all kwargs for easy subclassing
 
         if d is not None:
@@ -74,16 +105,16 @@ class fdict(dict):
             elif isinstance(d, self.__class__):
                 # We were supplied a fdict, initialize a copy
                 self.d = d.copy().d
-            elif isinstance(d, dict):
+            else: 
                 # Else it is not an internal call, the user supplied a dict to initialize the fdict, we have to flatten its keys
+                if not isinstance(d, dict):
+                    # User supplied another type of object than dict, we try to convert to a dict and flatten it
+                    d = dict(d)
                 self.d = self.flatkeys(d, sep=delimiter)
-                if self.fastview:
+                if fastview:
                     self._build_metadata()
-            else:
-                # Else the user supplied another type of object, we try to convert to a dict and flatten it
-                self.d = self.flatkeys(dict(d), sep=delimiter)
-                if self.fastview:
-                    self._build_metadata()
+                elif nodel:
+                    self._build_metadata_nodel()
         else:
             # No dict supplied, create an empty dict
             self.d = dict()
@@ -185,7 +216,7 @@ class fdict(dict):
         '''Build metadata to make viewitem and other methods using item resolution faster.
         Provided a list of full keys, this method will build parent nodes to point all the way down to the leaves.
         If no list is provided, metadata will be rebuilt for the whole dict.
-        Only for fastview modes.'''
+        Only for fastview mode.'''
 
         if fullkeys is None:
             fullkeys = list(self._generickeys(self.d))  # need to make a copy else RuntimeError because dict size will change
@@ -193,7 +224,7 @@ class fdict(dict):
         delimiter = self.delimiter
         for fullkey in fullkeys:
             if not fullkey[-1:] == delimiter:
-                # Fastview mode: create additional entries for each parent at every depths of the current leaf
+                # Create additional entries for each parent at every depths of the current leaf
                 parents = self._get_all_parent_nodes(fullkey, self.delimiter)
 
                 # First parent stores the direct path to the leaf
@@ -208,6 +239,30 @@ class fdict(dict):
                         self.d.__setitem__(parent, set([lastparent]))
                     lastparent = parent
 
+    def _build_metadata_nodel(self, fullkeys=None):
+        '''Build metadata to make contains faster.
+        Provided a list of full keys, this method will build parent nodes to point all the way down to the leaves.
+        If no list is provided, metadata will be rebuilt for the whole dict.
+        Only for nodel mode.'''
+
+        if fullkeys is None:
+            fullkeys = list(self._generickeys(self.d))  # need to make a copy else RuntimeError because dict size will change
+
+        delimiter = self.delimiter
+        for fullkey in fullkeys:
+            if not fullkey[-1:] == delimiter:
+                # Create additional entries for each parent at every depths of the current leaf
+                parents = self._get_all_parent_nodes(fullkey, self.delimiter)
+
+                # First parent stores the direct path to the leaf
+                # Then we recursively add the path to the nested parent in all super parents.
+                lastparent = fullkey
+                for parent in parents:
+                    if not parent in self.d:
+                        # If parent not in dict, we create it
+                        self.d.__setitem__(parent, None)
+                    lastparent = parent
+
     def __getitem__(self, key):
         '''Get an item given the key. O(1) in any case: if the item is a leaf, direct access, else if it is a node, a new fdict will be returned with a different rootpath but sharing the same internal dict.'''
         fullkey = self._build_path(key)
@@ -215,7 +270,7 @@ class fdict(dict):
         if fullkey in self.d: # Leaf: return the value (leaf direct access test is why we do `in self.d` and not `in self`)
             return self.d.__getitem__(fullkey)
         else: # Node: return a new full fdict based on the old one but with a different rootpath to limit the results by default (this is the magic that allows compatibility with the syntax d['item1']['item2'])
-            return self.__class__(d=self.d, rootpath=fullkey, delimiter=self.delimiter, fastview=self.fastview, **self.kwargs)
+            return self.__class__(d=self.d, rootpath=fullkey, delimiter=self.delimiter, fastview=self.fastview, nodel=self.nodel, **self.kwargs)
 
     def __setitem__(self, key, value):
         '''Set an item given the key. Supports for direct setting of nested elements without prior dict(), eg, x['a/b/c'] = 1. O(1) to set the item. If fastview mode, O(m*l) because of metadata building where m is the number of parents of current leaf, and l the number of leaves (if provided a nested dict).'''
@@ -255,6 +310,9 @@ class fdict(dict):
                 # update metadata
                 if self.fastview:
                     self._build_metadata(self._generickeys(d2))
+                # update metadata with nodel mode: just create empty nodes to signal the existence
+                elif self.nodel:
+                    self._build_metadata_nodel(self._generickeys(d2))
         else:
             # if the value is not a dict, we consider it a singleton/leaf, and we just build the full key and store the value as is
             if self.fastview:
@@ -272,11 +330,20 @@ class fdict(dict):
                         self.__delitem__(parentleaf)
                 # Then we can rebuild the metadata to point to this new leaf
                 self._build_metadata([fullkey])
+            elif self.nodel:
+                # update metadata with nodel mode: just an create empty node to signal its existence
+                self._build_metadata_nodel([fullkey])
             # and finally add the singleton as a leaf
             self.d.__setitem__(fullkey, value)
 
     def __delitem__(self, key, fullpath=False):
         '''Delete an item in the internal dict, O(1) for any leaf, O(n) for a nested dict'''
+
+        if self.nodel:
+            # Nodel mode: remove delitem, because else the internal dict will get incoherent (ie, nodes will remain even if there is no leaf)
+            # However, setitem and update will still be able to replace leaves
+            return
+
         if not fullpath:
             fullkey = self._build_path(key)
         else:
@@ -327,14 +394,14 @@ class fdict(dict):
                 return
 
     def __contains__(self, key):
-        '''Check existence of a key (or subkey) in the dictionary. O(1) for any leaf, O(n) at worst for nested dicts (eg, 'a' in d with d['a/b'] defined)'''
+        '''Check existence of a key (or subkey) in the dictionary. O(1) for any leaf, O(n) at worst for nested dicts (eg, 'a' in d with d['a/b'] defined) -- except if fastview mode or nodel mode activated'''
         fullkey = self._build_path(key)
         if self.d.__contains__(fullkey):
             # Key is a singleton/leaf, there is a direct match
             return True
         else:
             dirkey = fullkey+self.delimiter
-            if self.fastview:
+            if self.fastview or self.nodel:
                 # Fastview mode: nodes are stored so we can directly check in O(1)
                 return self.d.__contains__(dirkey)
             else:
@@ -351,9 +418,9 @@ class fdict(dict):
 
         delimiter = self.delimiter
         if not rootpath:
-            if self.fastview:
+            if self.fastview or self.nodel:
                 for k in self._viewkeys():
-                    if not k[-1:] == delimiter or nodes:
+                    if nodes or not k[-1:] == delimiter:
                         yield k
             else:
                 for k in self._viewkeys():
@@ -376,6 +443,11 @@ class fdict(dict):
                         else:
                             # Leaf, return the key and value
                             yield child[lpattern:]
+            elif self.nodel:
+                # Nodel mode: take care of nodes (ending with the delimiter) depending on nodes=False or True
+                plen = len(pattern)  # if nodes, need to check if the current node is not the rootpath!
+                for k in (k[lpattern:] for k in self._viewkeys() if k.startswith(pattern) and ((nodes and len(k) != plen) or not k[-1:] == delimiter)):
+                    yield k
             else:
                 for k in (k[lpattern:] for k in self._viewkeys() if k.startswith(pattern)):
                     yield k
@@ -388,7 +460,7 @@ class fdict(dict):
         delimiter = self.delimiter
         if not rootpath:
             # Return all items (because no rootpath, so no filter)
-            if self.fastview:
+            if self.fastview or self.nodel:
                 # Fastview mode, filter out nodes (ie, keys ending with delimiter) to keep only leaves
                 for k,v in self._viewitems():
                     if not k[-1:] == delimiter or nodes:
@@ -417,6 +489,11 @@ class fdict(dict):
                         else:
                             # Leaf, return the key and value
                             yield child[lpattern:], self.d.__getitem__(child)
+            elif self.nodel:
+                # Nodel mode: take care of nodes (ending with the delimiter) depending on nodes=False or True
+                plen = len(pattern)  # if nodes, need to check if the current node is not the rootpath!
+                for k in ((k[lpattern:], v) for k,v in self._viewitems() if k.startswith(pattern) and ((nodes and len(k) != plen) or not k[-1:] == delimiter)):
+                    yield k
             else:
                 # No fastview, just walk through all items and filter out the ones that are not in the current rootpath
                 for k,v in ((k[lpattern:], v) for k,v in self._viewitems() if k.startswith(pattern)):
@@ -429,7 +506,7 @@ class fdict(dict):
 
         delimiter = self.delimiter
         if not rootpath:
-            if self.fastview:
+            if self.fastview or self.nodel:
                 for k,v in self._viewitems():
                     if not k[-1:] == delimiter or nodes:
                         yield v
@@ -454,6 +531,11 @@ class fdict(dict):
                         else:
                             # Leaf, return the key and value
                             yield self.d.__getitem__(child)
+            elif self.nodel:
+                # Nodel mode: take care of nodes (ending with the delimiter) depending on nodes=False or True
+                plen = len(pattern)
+                for v in (v for k,v in self._viewitems() if k.startswith(pattern) and ((nodes and len(k) != plen) or not k[-1:] == delimiter)):
+                    yield v
             else:
                 for v in (v for k,v in self._viewitems() if k.startswith(pattern)):
                     yield v
@@ -501,11 +583,13 @@ class fdict(dict):
         # The only solution is to skip d2 nodes altogether and rebuild the metadata for each new leaf added. This is faster than trying to merge separately each d2 set with self.d, because anyway we also have to rebuild for d2 root nodes (which might not be self.d root nodes particularly if rootpath is set)
         if self.fastview:
             self._build_metadata(self._build_path(k) for k in d2keys)
+        elif self.nodel:
+            self._build_metadata_nodel(self._build_path(k) for k in d2keys)
 
         return rtncode
 
     def copy(self):
-        fcopy = self.__class__(d=self.d.copy(), rootpath=self.rootpath, delimiter=self.delimiter, fastview=self.fastview, **self.kwargs)
+        fcopy = self.__class__(d=self.d.copy(), rootpath=self.rootpath, delimiter=self.delimiter, fastview=self.fastview, nodel=self.nodel, **self.kwargs)
         if self.fastview:
             # Fastview mode: we need to ensure we have copies of every sets used for nodes, else the nodes will reference (delitem included) the same items in both the original and the copied fdict!
             for k in fcopy._viewkeys():
@@ -524,7 +608,7 @@ class fdict(dict):
         return next(counter)
 
     def __len__(self):
-        if not self.rootpath:
+        if not self.rootpath and (not self.fastview and not self.nodel):
             return self.d.__len__()
         else:
             # If there is a rootpath, we have to limit the length to the subelements
@@ -538,13 +622,13 @@ class fdict(dict):
             # If not a dict nor a subclass of fdict, we cannot compare
             return False
         else:
-            if is_fdict and not self.rootpath and self.fastview == d2.fastview:
+            if is_fdict and not self.rootpath and self.fastview == d2.fastview and self.nodel == d2.nodel:
                 # fdict, we can directly compare the internal dicts (but only if fastview is the same for both)
                 return (self.d == d2.d)
             else:
                 kwargs = {}
                 if is_fdict:
-                    if len(self) != len(d2) and self.fastview == d2.fastview:
+                    if len(self) != len(d2) and self.fastview == d2.fastview and self.nodel == d2.nodel:
                         # If size is different then the dicts are different
                         # Note that we need to compare the items because we need to filter if we are looking at nested keys (ie, if there is a rootpath)
                         return False
@@ -577,7 +661,7 @@ class fdict(dict):
             except (AttributeError, TypeError):
                 return repr(dict(self.items()))
 
-    def __str__(self, nodes=True):
+    def __str__(self, nodes=False):
         if self.rootpath:
             return str(dict(self.items(fullpath=False, nodes=nodes)))
         else:
@@ -631,9 +715,9 @@ class fdict(dict):
         And also for subdicts (like sfdict) which might store in a file, so we don't want to start mixing up different paths in the same file, but we would like to extract to a fdict with same parameters as the original, so keeping full path is the only way to do so coherently.
         '''
         if fullpath:
-            d2 = self.__class__(d=self.items(fullpath=True, nodes=False), rootpath=self.rootpath, delimiter=self.delimiter, fastview=self.fastview, **self.kwargs)
+            d2 = self.__class__(d=self.items(fullpath=True, nodes=False), rootpath=self.rootpath, delimiter=self.delimiter, fastview=self.fastview, nodel=self.nodel, **self.kwargs)
         else:
-            d2 = self.__class__(d=self.items(fullpath=False, nodes=False), rootpath='', delimiter=self.delimiter, fastview=self.fastview) # , **self.kwargs)  # if not fullpath for keys, then we do not propagate kwargs because it might implicate propagating filename saving and mixing up keys. For fdict, this does not make a difference, but it might for subclassed dicts. Override this function if you want to ensure that an extract has all same parameters as original when fullpath=False in your subclassed dict.
+            d2 = self.__class__(d=self.items(fullpath=False, nodes=False), rootpath='', delimiter=self.delimiter, fastview=self.fastview, nodel=self.nodel) # , **self.kwargs)  # if not fullpath for keys, then we do not propagate kwargs because it might implicate propagating filename saving and mixing up keys. For fdict, this does not make a difference, but it might for subclassed dicts. Override this function if you want to ensure that an extract has all same parameters as original when fullpath=False in your subclassed dict.
         if d2.fastview:
             d2._build_metadata()
         return d2
@@ -662,10 +746,66 @@ class fdict(dict):
 
 
 class sfdict(fdict):
-    '''A nested dict with flattened internal representation, combined with shelve to allow for efficient storage and memory allocation of huge nested dictionnaries.
+    '''
+    A nested dict with flattened internal representation, combined with shelve to allow for efficient storage and memory allocation of huge nested dictionnaries.
     If you change leaf items (eg, list.append), do not forget to sync() to commit changes to disk and empty memory cache because else this class has no way to know if leaf items were changed!
     '''
     def __init__(self, *args, **kwargs):
+        '''
+        Parameters
+        ----------
+        d  : dict, optional
+            Initialize with a pre-existing dict.
+            Also used internally to pass a reference to parent fdict.
+        rootpath : str, optional
+            Internal variable, define the nested level.
+        delimiter  : str, optional
+            Internal delimiter for nested levels. Can also be used for
+            getitem direct access (e.g. ``x['a/b/c']``).
+            [default : '/']
+        fastview  : bool, optional
+            Activates fastview mode, which makes setitem slower
+            in O(m*l) instead of O(1), but makes view* methods
+            (viewitem, viewkeys, viewvalues) as fast as dict's.
+            [default : False]
+        nodel  : bool, optional
+            Activates nodel mode, which makes contains test
+            in O(1) for nodes (leaf test is always O(1) in any mode).
+            Only drawback: delitem is not suppressed.
+            Useful for quick building of databases, then you can
+            reopen the database with a normal fdict if you want
+            the ability to delitem.
+            [default : False]
+        filename : str, optional
+            Path and filename where to store the database.
+            [default : random temporary file]
+        autosync : bool, optional
+            Commit (sync) to file at every setitem (assignment).
+            Assignments are always stored on-disk asap, but not
+            changes to non-dict collections stored in leaves
+            (e.g. updating a list stored in a leaf will not commit to disk).
+            This option allows to sync at the next assignment automatically
+            (because there is no way to know if a leaf collection changed).
+            Drawback: if you do a lot of assignments, this will significantly
+            slow down your processing, so it is advised to rather sync()
+            manually at regular intervals.
+            [default : False]
+        writeback : bool, optional
+            Activates shelve writeback option. If False, only assignments
+            will allow committing changes of leaf collections. See shelve
+            documentation.
+            [default : True]
+        forcedumbdbm : bool, optional
+            Force the use of the Dumb DBM implementation to manage
+            the on-disk database (should not be used unless you get an
+            exception because not any other implementation of anydbm
+            can be found on your system). Dumb DBM should work on
+            any platform, it is native to Python.
+            [default : False]
+        Returns
+        -------
+        out  : dict-like object.
+        '''
         # Initialize specific arguments for sfdict
         if 'filename' in kwargs:
             self.filename = kwargs['filename']
