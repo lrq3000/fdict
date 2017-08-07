@@ -707,6 +707,7 @@ class sfdict(fdict):
                     # Force the use of dumb dbm even if slower
                     raise ImportError('pass')
                 d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
+                self.usedumbdbm = False
             except (ImportError, IOError) as exc:
                 if 'pass' in str(exc).lower() or '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
                     # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
@@ -718,6 +719,7 @@ class sfdict(fdict):
                         db = dumbdbm.open(self.filename, 'c')
                     # Open the dumb db as a shelf
                     d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
+                    self.usedumbdbm = True
                 else:  # pragma: no cover
                     raise
 
@@ -749,6 +751,13 @@ class sfdict(fdict):
         self.d.close()
         if delete:
             try:
-                os.remove(self.get_filename())
-            except Exception:
+                filename = self.get_filename()
+                if not self.usedumbdbm:
+                    os.remove(filename)
+                else:
+                    os.remove(filename+'.dat')
+                    os.remove(filename+'.dir')
+                    if os.path.exists(filename+'.bak'):  # pragma: no cover
+                        os.remove(filename+'.bak')
+            except Exception:  # pragma: no cover
                 pass
