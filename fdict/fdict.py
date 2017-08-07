@@ -162,7 +162,6 @@ class fdict(dict):
         {'1.2.3': 4, '1.5': 6}
 
         v0.1.0 by bfontaine, MIT license
-        modified into a generator by lrq3000
         """
         flat = {}
         dicts = [("", d)]
