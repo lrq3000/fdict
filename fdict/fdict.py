@@ -105,7 +105,7 @@ class fdict(dict):
             elif isinstance(d, self.__class__):
                 # We were supplied a fdict, initialize a copy
                 self.d = d.copy().d
-            else: 
+            else:
                 # Else it is not an internal call, the user supplied a dict to initialize the fdict, we have to flatten its keys
                 if not isinstance(d, dict):
                     # User supplied another type of object than dict, we try to convert to a dict and flatten it
