@@ -256,12 +256,10 @@ class fdict(dict):
 
                 # First parent stores the direct path to the leaf
                 # Then we recursively add the path to the nested parent in all super parents.
-                lastparent = fullkey
                 for parent in parents:
                     if not parent in self.d:
                         # If parent not in dict, we create it
                         self.d.__setitem__(parent, None)
-                    lastparent = parent
 
     def __getitem__(self, key):
         '''Get an item given the key. O(1) in any case: if the item is a leaf, direct access, else if it is a node, a new fdict will be returned with a different rootpath but sharing the same internal dict.'''
