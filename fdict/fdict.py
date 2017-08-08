@@ -210,7 +210,9 @@ class fdict(dict):
 
     def _build_path(self, key=''):
         '''Build full path of current key given the rootpath'''
-        return (self.delimiter).join([self.rootpath, key]) if self.rootpath else key
+        # TODO: replace internal keys by mutableobjects instead of strings, it wil make appending much faster!
+        rootpath = self.rootpath
+        return "%s%s%s" % (rootpath, self.delimiter, key) if rootpath else key
 
     def _build_metadata(self, fullkeys=None):
         '''Build metadata to make viewitem and other methods using item resolution faster.
