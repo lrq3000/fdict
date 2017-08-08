@@ -252,6 +252,20 @@ def test_fdict_update_with_empty_dict():
     a['a'].update({'b': 1, 'c': 2})
     assert a == {'a/c': 2, 'a/b': 1}
 
+def test_fdict_update_nesteddict():
+    '''Test fdict update of a nested dict'''
+    a = fdict()
+    a['a'] = {}
+    a['a']['b'] = 2
+    a2 = a.copy()
+    a3 = a.copy()
+    a4 = a.copy()
+    a['a']['c'].update({'subelements': {'e': 1, 'f': {'g': 1}}})
+    a2['a/c'].update({'subelements': {'e': 1, 'f': {'g': 1}}})
+    a3['a']['c'].update(fdict({'subelements': {'e': 1, 'f': {'g': 1}}}))
+    a4['a/c'].update(fdict({'subelements': {'e': 1, 'f': {'g': 1}}}))
+    assert a.d == a2.d == a3.d == a4.d == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1, 'a/b': 2}
+
 def test_fdict_fastview_basic():
     '''Test fastview mode basic features'''
     a = fdict(fastview=True)
