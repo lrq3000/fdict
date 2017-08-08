@@ -809,7 +809,7 @@ class sfdict(fdict):
         out  : dict-like object.
         '''
         # Initialize specific arguments for sfdict
-        if 'filename' in kwargs:
+        if 'filename' in kwargs and kwargs['filename']:
             self.filename = kwargs['filename']
             #del kwargs['filename'] # do not del for auto management of internal sub calls to sfdict
         else:
