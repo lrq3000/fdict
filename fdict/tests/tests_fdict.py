@@ -579,6 +579,45 @@ def test_fdict_pop_popitem():
     else:
         assert False
 
+def test_fdict_get_root_parent_node():
+    '''Test fdict _get_root_parent_node()'''
+    path='a/b/c/d/e/f/g'
+    rootpath='a/b'
+    assert fdict._get_root_parent_node(path, delimiter='/', rootpath=rootpath) == 'a/b/c'
+
+def test_fdict_viewrestrict():
+    '''Test fdict view*_restrict methods'''
+    a = fdict({'a': {'b': {'c': 1, 'd': 2}, 'e': 3}, 'f': 4})
+    assert set(a.viewkeys_restrict()) == set(['a', 'f'])
+    assert set(a['a'].viewkeys_restrict()) == set(['b', 'e'])
+    print(set(a['a'].viewkeys_restrict(fullpath=True)))
+    assert set(a['a'].viewkeys_restrict(fullpath=True)) == set(['a/b', 'a/e'])
+
+    res = list(a.viewitems_restrict())
+    assert ('a', {'b/d': 2, 'b/c': 1, 'e': 3}) in res and ('f', 4) in res
+    res = list(a['a'].viewitems_restrict())
+    assert ('b', {'c': 1, 'd': 2}) in res and ('e', 3) in res
+    res = list(a['a'].viewitems_restrict(fullpath=True))
+    assert ('a/b', {'c': 1, 'd': 2}) in res and ('a/e', 3) in res
+
+    res = list(a.viewvalues_restrict())
+    assert {'b/d': 2, 'b/c': 1, 'e': 3} in res and 4 in res
+    res = list(a['a'].viewvalues_restrict())
+    assert {'c': 1, 'd': 2} in res and 3 in res
+    res = list(a['a'].viewvalues_restrict(fullpath=True))
+    assert {'c': 1, 'd': 2} in res and 3 in res
+
+def test_fdict_firstmethods():
+    '''Test fdict first*() methods (firstkey, firstitem, firstvalue)'''
+    # Test firstkey, firstitem and firstvalue
+    a = fdict({'a': {'b': {'c': 1, 'd': 2}, 'e': 3}, 'f': 4})
+    fkey = a['a'].firstkey()
+    fitem = a['a'].firstitem()
+    fval = a['a'].firstvalue()
+    assert fkey == 'b' or fkey == 'e'
+    assert fitem == ('b', {'c': 1, 'd': 2}) or fitem == ('e', 3)
+    assert fval == {'c': 1, 'd': 2} or fval == 3
+
 
 ### FDICT FASTVIEW
 

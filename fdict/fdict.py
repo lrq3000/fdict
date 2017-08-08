@@ -170,11 +170,23 @@ class fdict(dict):
 
     @staticmethod
     def _get_parent_node(path, delimiter='/'):
-        '''Get path to the first parent of current leaf'''
+        '''Get path to the first direct parent of current leaf'''
         endpos = len(path)  # 'a/b' (leaf)
-        if path.endswith(delimiter):  # 'a/b/' (node)
+        if path[-1:] == delimiter:  # 'a/b/' (node)
             endpos -= 1
-        return path[:path.rfind(delimiter, 0, endpos)+1]
+        return path[:path.rfind(delimiter, 0, endpos)+1]  # note that nodes are returned with the ending delimiter
+
+    @staticmethod
+    def _get_root_parent_node(path, delimiter='/', rootpath=None):
+        '''Get path to the root parent of current leaf'''
+        if rootpath:
+            # Strip out the rootpath
+            startpos = len(rootpath)+1
+        else:
+            startpos = 0
+
+        m = path.find(delimiter, startpos)
+        return path[:m] if m >= 0 else None  # note that nodes are returned without the ending delimiter (so that we return both nodes and leaves the same way)
 
     @staticmethod
     def flatkeys(d, sep="/"):
@@ -412,17 +424,21 @@ class fdict(dict):
                 return False
 
     def viewkeys(self, fullpath=False, nodes=False, rootpath=None):
+        '''Show keys of all children of current nodes (at any nested level)'''
         if not rootpath:
             # Allow to override rootpath, particularly useful for delitem (which is always called from parent, so the rootpath is incorrect, overriding the rootpath allows to limit the search breadth)
             rootpath = self.rootpath
 
         delimiter = self.delimiter
         if not rootpath:
+            # No rootpath, we do not have to do filtering based on rootpath, this simplifies a lot (and speed-up)
             if self.fastview or self.nodel:
+                # Fastview mode or nodel mode: filter out nodes except if nodes=True
                 for k in self._viewkeys():
                     if nodes or not k[-1:] == delimiter:
                         yield k
             else:
+                # Just walk through all keys
                 for k in self._viewkeys():
                     yield k
         else:
@@ -555,6 +571,71 @@ class fdict(dict):
         def items(self, *args, **kwargs):
             return list(self.viewitems(*args, **kwargs))
 
+    def viewkeys_restrict(self, *args, **kwargs):
+        '''Show only the direct children of current node'''
+        # Restrict to only direct children
+        delimiter = self.delimiter
+        if kwargs.get('fullpath', None):
+            rootpath = self.rootpath
+        else:
+            rootpath = None
+        lastparent = None
+        for k in self.viewkeys(*args, **kwargs):
+            # Get the root parent node of the current leaf/node (or use the same if it is already the direct child)
+            root_parent = self._get_root_parent_node(k, delimiter, rootpath)
+            if root_parent != lastparent:
+                # Avoid duplication, do not return twice the same parent node
+                if not root_parent:
+                    # Stripped key is empty, so there is no parent, the key is already root, it is a leaf
+                    yield k
+                else:
+                    # Else there is a root parent node
+                    yield root_parent
+                    lastparent = root_parent
+
+    def viewitems_restrict(self, *args, **kwargs):
+        '''Show only the direct children of current node'''
+        # Restrict to only direct children
+        delimiter = self.delimiter
+        if kwargs.get('fullpath', None):
+            rootpath = self.rootpath
+            fullpath = kwargs['fullpath']
+        else:
+            rootpath = None
+            fullpath = False
+        lastparent = None
+        lpattern = len(self.rootpath)+len(self.delimiter)
+        for k, v in self.viewitems(*args, **kwargs):
+            # Get the root parent node of the current leaf/node (or use the same if it is already the direct child)
+            root_parent = self._get_root_parent_node(k, delimiter, rootpath)
+            if not root_parent or root_parent != lastparent:
+                # Avoid duplication, do not return twice the same parent node
+                if not root_parent:
+                    # Stripped key is empty, so there is no parent, the key is already root, it is a leaf, return the leaf key and value
+                    yield k, v
+                else:
+                    # Else there is a root parent node, return a sub fdict
+                    yield root_parent, self.__getitem__(root_parent[lpattern:] if fullpath else root_parent)  # strip the rootpath if fullpath=True before using getitem (else the value will not be found
+                    lastparent = root_parent
+
+    def viewvalues_restrict(self, *args, **kwargs):
+        '''Show only the direct children of current node'''
+        # Restrict to only direct children
+        for _, v in self.viewitems_restrict(*args, **kwargs):
+            yield v
+
+    def firstkey(self, *args, **kwargs):
+        '''Get the first key of the next direct child'''
+        return next(self.viewkeys_restrict(*args, **kwargs))
+
+    def firstitem(self, *args, **kwargs):
+        '''Get the first item of the next direct child'''
+        return next(self.viewitems_restrict(*args, **kwargs))
+
+    def firstvalue(self, *args, **kwargs):
+        '''Get the first value of the next direct child'''
+        return next(self.viewvalues_restrict(*args, **kwargs))
+
     def update(self, d2):
         if isinstance(d2, self.__class__):
             # Same class, we walk d2 but we cut d2 rootpath (fullpath=False) since we will rebase on our own self.d dict
@@ -671,8 +752,7 @@ class fdict(dict):
                 return str(dict(self.items()))
 
     def pop(self, k, d=None, fullpath=True):
-        # TODO: allow to return only direct children, and not leaves at any nested level. Could use _get_first_parent_node() and discriminate with previously returned parent to avoid duplicates? Then if leaf we do a self.d.pop(), else if node we do a self.__getitem__().extract() and then a self.__delitem__().
-        # TODO: this idea would be great also just for viewitem, to reproduce the behavior of a normal dict: at a specific nested level, return the elements of only this level.
+        # TODO: allow to return only direct children, and not leaves at any nested level. Could use _get_first_parent_node() and discriminate with previously returned parent to avoid duplicates? Then if leaf we do a self.d.pop(), else if node we do a self.__getitem__().extract() and then a self.__delitem__(). Meanwhile there is first_item() method.
         fullkey = self._build_path(k)
         if fullkey in self.d:
             # Leaf
