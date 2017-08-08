@@ -671,6 +671,8 @@ class fdict(dict):
                 return str(dict(self.items()))
 
     def pop(self, k, d=None, fullpath=True):
+        # TODO: allow to return only direct children, and not leaves at any nested level. Could use _get_first_parent_node() and discriminate with previously returned parent to avoid duplicates? Then if leaf we do a self.d.pop(), else if node we do a self.__getitem__().extract() and then a self.__delitem__().
+        # TODO: this idea would be great also just for viewitem, to reproduce the behavior of a normal dict: at a specific nested level, return the elements of only this level.
         fullkey = self._build_path(k)
         if fullkey in self.d:
             # Leaf

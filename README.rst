@@ -96,7 +96,9 @@ But this does NOT work as expected:
 
 ``{'a': 1, 'b': -1, 'b/c': 2}``
 
-A last minor difference is the handling of keys: assigning an empty dict to a key will not create the key (e.g. ``d['a'] = {}`` will not create the key ``a``, it will stay inexistent until it gets assigned a non empty dict value), and assigning sub-keys that do not exist is ok without any prior parent dict creation (e.g. ``d = fdict(); d['a']['b']['c']['d']['e'] = 1`` is OK).
+A minor difference is the handling of keys: assigning an empty dict to a key will not create the key (e.g. ``d['a'] = {}`` will not create the key ``a``, it will stay inexistent until it gets assigned a non empty dict value), and assigning sub-keys that do not exist is ok without any prior parent dict creation (e.g. ``d = fdict(); d['a']['b']['c']['d']['e'] = 1`` is OK).
+
+Another minor difference is how `pop()` and `popitem()` are handled: they will return the next leaf at any nested level, and never nodes. Thus, you cannot get the next item at a specific level, but only the next item at any nested level. This could potentially be fixed in a later release (by using ``getfirstparent`` and discriminate with the previously returned parent).
 
 Performances
 --------------------
