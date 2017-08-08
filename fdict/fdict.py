@@ -208,9 +208,9 @@ class fdict(dict):
                     flat[k_] = v
         return flat
 
-    def _build_path(self, key='', prepend=None):
-        '''Build full path of current key given the rootpath and optionally a prepend'''
-        return (self.delimiter).join(filter(None, [prepend, self.rootpath, key]))
+    def _build_path(self, key=''):
+        '''Build full path of current key given the rootpath'''
+        return (self.delimiter).join([self.rootpath, key]) if self.rootpath else key
 
     def _build_metadata(self, fullkeys=None):
         '''Build metadata to make viewitem and other methods using item resolution faster.

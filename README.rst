@@ -121,7 +121,7 @@ Thus, if you want to do data exploration on a ``fdict``, you can use either of t
 
 There is probably room for speed optimization, if you have any idea please feel free to open an issue on Github.
 
-Note that this module is compatible with `PyPy <https://pypy.org/>`__, and it is confirmed that ``fdict`` gets a big speed-up with this interpreter.
+Note that this module is compatible with `PyPy <https://pypy.org/>`__, so you might get a speed-up with this interpreter.
 
 In any case, this module is primarily meant to do quick prototypes of bigdata databases, that you can then switch to another faster database after reworking the structure a bit.
 
