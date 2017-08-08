@@ -96,6 +96,8 @@ But this does NOT work as expected:
 
 ``{'a': 1, 'b': -1, 'b/c': 2}``
 
+A last minor difference is the handling of keys: assigning an empty dict to a key will not create the key (e.g. ``d['a'] = {}`` will not create the key ``a``, it will stay inexistent until it gets assigned a non empty dict value), and assigning sub-keys that do not exist is ok without any prior parent dict creation (e.g. ``d = fdict(); d['a']['b']['c']['d']['e'] = 1`` is OK).
+
 Performances
 --------------------
 
