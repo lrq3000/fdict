@@ -583,15 +583,14 @@ class fdict(dict):
         for k in self.viewkeys(*args, **kwargs):
             # Get the root parent node of the current leaf/node (or use the same if it is already the direct child)
             root_parent = self._get_root_parent_node(k, delimiter, rootpath)
-            if root_parent != lastparent:
+            if not root_parent:
+                # Stripped key is empty, so there is no parent, the key is already root, it is a leaf
+                yield k
+            elif root_parent != lastparent:
+                # Else there is a root parent node
                 # Avoid duplication, do not return twice the same parent node
-                if not root_parent:
-                    # Stripped key is empty, so there is no parent, the key is already root, it is a leaf
-                    yield k
-                else:
-                    # Else there is a root parent node
-                    yield root_parent
-                    lastparent = root_parent
+                yield root_parent
+                lastparent = root_parent
 
     def viewitems_restrict(self, *args, **kwargs):
         '''Show only the direct children of current node'''
@@ -608,15 +607,14 @@ class fdict(dict):
         for k, v in self.viewitems(*args, **kwargs):
             # Get the root parent node of the current leaf/node (or use the same if it is already the direct child)
             root_parent = self._get_root_parent_node(k, delimiter, rootpath)
-            if not root_parent or root_parent != lastparent:
+            if not root_parent:
+                # Stripped key is empty, so there is no parent, the key is already root, it is a leaf
+                yield k, v
+            elif root_parent != lastparent:
+                # Else there is a root parent node, return a sub fdict
                 # Avoid duplication, do not return twice the same parent node
-                if not root_parent:
-                    # Stripped key is empty, so there is no parent, the key is already root, it is a leaf, return the leaf key and value
-                    yield k, v
-                else:
-                    # Else there is a root parent node, return a sub fdict
-                    yield root_parent, self.__getitem__(root_parent[lpattern:] if fullpath else root_parent)  # strip the rootpath if fullpath=True before using getitem (else the value will not be found
-                    lastparent = root_parent
+                yield root_parent, self.__getitem__(root_parent[lpattern:] if fullpath else root_parent)  # strip the rootpath if fullpath=True before using getitem (else the value will not be found
+                lastparent = root_parent
 
     def viewvalues_restrict(self, *args, **kwargs):
         '''Show only the direct children of current node'''

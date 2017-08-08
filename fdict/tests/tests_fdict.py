@@ -589,7 +589,6 @@ def test_fdict_viewrestrict():
     '''Test fdict view*_restrict methods'''
     a = fdict({'a': {'b': {'c': 1, 'd': 2}, 'e': 3}, 'f': 4})
     assert set(a.viewkeys_restrict()) == set(['a', 'f'])
-    print(set(a['a'].viewkeys_restrict()))
     assert set(a['a'].viewkeys_restrict()) == set(['b', 'e'])
     assert set(a['a'].viewkeys_restrict(fullpath=True)) == set(['a/b', 'a/e'])
 
