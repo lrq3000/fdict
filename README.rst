@@ -248,7 +248,8 @@ Returns:
 LICENCE
 -------------
 
-This library is licensed under MIT License.
+This library is licensed under the MIT License. It was initially made for the Coma Science Group - GIGA Consciousness - CHU de Liege, Belgium.
+
 Included are the ``flatkeys`` function by `bfontaine <https://github.com/bfontaine/flatkeys>`__  and ``_count_iter_items`` by `zuo <https://stackoverflow.com/a/15112059/1121352>`__.
 
 

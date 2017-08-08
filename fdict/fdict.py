@@ -303,7 +303,7 @@ class fdict(dict):
                     self.update(d2)
                 else:
                     # If this is just a normal dict, we flatten it and merge
-                    d2 = self.flatkeys({self._build_path(prepend=key) : value}, sep=self.delimiter)
+                    d2 = self.flatkeys({self._build_path(key): value}, sep=self.delimiter)
                     self.d.update(d2)
                 # update metadata
                 if self.fastview:

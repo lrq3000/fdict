@@ -209,6 +209,22 @@ def test_fdict_update_eq():
     assert a15sub == a25sub == a25subc
     assert dict(a15sub.items()) == dict(a25sub.items()) == dict(a25subc.items())
 
+def test_fdict_setitem_nesteddict():
+    '''Test fdict setitem (assignment) of a nested dict'''
+    a = fdict()
+    a2 = a.copy()
+    a3 = a.copy()
+    a4 = a.copy()
+    a['a']['c'] = {'subelements': {'e': 1, 'f': {'g': 1}}}
+    a2['a/c'] = {'subelements': {'e': 1, 'f': {'g': 1}}}
+    a3['a']['c'] = fdict({'subelements': {'e': 1, 'f': {'g': 1}}})
+    a4['a/c'] = fdict({'subelements': {'e': 1, 'f': {'g': 1}}})
+    assert a.d == a2.d == a3.d == a4.d == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1}
+    a['b'] = {}
+    a['b']['d'] = 2
+    a['a']['b'] = 3
+    assert a == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1, 'b/d': 2, 'a/b': 3}
+
 def test_fdict_setitem_replacement():
     '''Test emptying by setitem to empty dict and singleton replacement by a nested dict'''
     a = fdict({'a/b': 1, 'a/c': set([1,2,3]), 'd': [1, 2, 3], 'e': [1, 2, 3]})
