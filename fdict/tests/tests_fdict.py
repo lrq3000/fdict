@@ -4,6 +4,9 @@ from fdict import fdict, sfdict
 import ast
 import sys
 
+
+### FDICT
+
 def test_fdict_creation():
     '''fdict: Test creation of just a nested dict, without anything else'''
     a = fdict()
@@ -211,6 +214,7 @@ def test_fdict_update_eq():
 
 def test_fdict_setitem_nesteddict():
     '''Test fdict setitem (assignment) of a nested dict'''
+    # Test dict to sub fdict assignment
     a = fdict()
     a2 = a.copy()
     a3 = a.copy()
@@ -220,10 +224,35 @@ def test_fdict_setitem_nesteddict():
     a3['a']['c'] = fdict({'subelements': {'e': 1, 'f': {'g': 1}}})
     a4['a/c'] = fdict({'subelements': {'e': 1, 'f': {'g': 1}}})
     assert a.d == a2.d == a3.d == a4.d == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1}
+    # Test singleton assignments and all is alright
     a['b'] = {}
     a['b']['d'] = 2
     a['a']['b'] = 3
     assert a == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1, 'b/d': 2, 'a/b': 3}
+    # Test nested fdict to sub fdict assignment
+    a = fdict()
+    a['a']['c'] = {'subelements': {'e': 1, 'f': {'g': 1}}}
+    a2 = a.copy()
+    a3 = a.copy()
+    b = fdict({'x': {'y': {'subelements': {'e': -2, 'f': {'g': -2}}}}})
+    a['a']['c'] = b['x']['y']
+    assert a.d == {'a/c/subelements/f/g': -2, 'a/c/subelements/e': -2}
+    # Test nested fdict to root fdict assigment
+    a2 = b['x']['y']
+    assert a2 == {'subelements/f/g': -2, 'subelements/e': -2}
+    # Test root fdict to sub fdict assignment
+    a3['a']['c'] = b
+    assert a3.d == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1, 'a/c/x/y/subelements/f/g': -2, 'a/c/x/y/subelements/e': -2}
+    # Test nested normal dict to sub fdict assignment
+    a = fdict()
+    a['a']['c'] = {'subelements': {'e': 1, 'f': {'g': 1}}}
+    a3 = a.copy()
+    b = {'x': {'y': {'subelements': {'e': -2, 'f': {'g': -2}}}}}
+    a['a']['c'] = b['x']['y']
+    assert a.d == {'a/c/subelements/f/g': -2, 'a/c/subelements/e': -2}
+    # Test root fdict to sub fdict assignment
+    a3['a']['c'] = b
+    assert a3.d == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1, 'a/c/x/y/subelements/f/g': -2, 'a/c/x/y/subelements/e': -2}
 
 def test_fdict_setitem_replacement():
     '''Test emptying by setitem to empty dict and singleton replacement by a nested dict'''
@@ -238,13 +267,6 @@ def test_fdict_setitem_replacement():
     a['a'] = 2
     assert a == {'a': 2, 'a/c': set([1, 2, 3]), 'a/b': 1, 'e/g': 3, 'e/f': 2}
 
-def test_fdict_todictnested():
-    '''Test to_dict_nested() conversion'''
-    a = fdict({'a/b': 1, 'a/c': set([1, 2]), 'd': 3})
-    adict = a.to_dict_nested()
-    assert adict == {'a': {'b': 1, 'c': set([1, 2])}, 'd': 3}
-    assert not isinstance(adict, fdict) and isinstance(adict, dict)
-
 def test_fdict_update_with_empty_dict():
     '''Test update of empty subdict'''
     a = fdict()
@@ -254,6 +276,7 @@ def test_fdict_update_with_empty_dict():
 
 def test_fdict_update_nesteddict():
     '''Test fdict update of a nested dict'''
+    # Test dict to sub fdict assignment
     a = fdict()
     a['a'] = {}
     a['a']['b'] = 2
@@ -265,130 +288,30 @@ def test_fdict_update_nesteddict():
     a3['a']['c'].update(fdict({'subelements': {'e': 1, 'f': {'g': 1}}}))
     a4['a/c'].update(fdict({'subelements': {'e': 1, 'f': {'g': 1}}}))
     assert a.d == a2.d == a3.d == a4.d == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1, 'a/b': 2}
-
-def test_fdict_fastview_basic():
-    '''Test fastview mode basic features'''
-    a = fdict(fastview=True)
-    a['a/b/c'] = 1
-    a['a']['b']['d'] = 2
-    a['a']['e']['f'] = 3
-    a['a']['e']['g']['h'] = 4
-    a['a']['e']['g']['i'] = 5
-
-    assert dict(a.d.items()) == dict([('a/e/g/', set(['a/e/g/i', 'a/e/g/h'])), ('a/e/f', 3), ('a/e/', set(['a/e/g/', 'a/e/f'])), ('a/', set(['a/e/', 'a/b/'])), ('a/b/c', 1), ('a/b/d', 2), ('a/b/', set(['a/b/c', 'a/b/d'])), ('a/e/g/i', 5), ('a/e/g/h', 4)])
-    assert dict(a.items()) == dict([('a/e/f', 3), ('a/b/c', 1), ('a/b/d', 2), ('a/e/g/i', 5), ('a/e/g/h', 4)])  # items() on a fastview fdict should hide the nodes (eg, 'a/b/') and only show leafs, so that behavior is comparable to a non-fastview fdict
-    assert dict(a['a']['e'].items()) == dict([('g/i', 5), ('g/h', 4), ('f', 3)])
-    assert dict(a['a']['e'].items(fullpath=True)) == dict([('a/e/g/i', 5), ('a/e/g/h', 4), ('a/e/f', 3)])  # test recursive fastview items()
-
-    assert dict(a['a']['e'].items(fullpath=True)) == dict([('a/e/g/i', 5), ('a/e/g/h', 4), ('a/e/f', 3)])
-    assert set(a['a']['e'].keys(fullpath=True)) == set(['a/e/g/i', 'a/e/g/h', 'a/e/f'])
-    assert set(a['a']['e'].values()) == set([5, 4, 3])
-    assert set(a['a'].values()) == set([1, 2, 3, 4, 5])  # use set() when we do not case about order in a list
-    assert dict(a['j'].items()) == {}  # empty nested dict
-    assert list(a['j'].keys()) == []
-    assert list(a['j'].values()) == []
-
-    # test fastview contains
-    assert 'a' in a
-    assert 'a/' in a
-    assert 'a/e/g/h' in a
-    assert 'g' in a['a']['e']
-    assert 'g' in a['a/e']
-    assert 'g/h' in a['a/e']
-    assert not 'a/e/g/x' in a
-    assert not 'x' in a
-
-    # test fastview copy
-    from copy import deepcopy
-    assert a.d == {'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}
+    # Test nested fdict to sub fdict assignment
+    a = fdict()
+    a['a']['c'] = {'subelements': {'e': 1, 'f': {'g': 1}}}
     a2 = a.copy()
-    for k in a.d.keys():
-        if k.endswith(a.delimiter):
-            # all nodes should be copied as different objects
-            assert id(a.d[k]) != id(a2.d[k])
-    # test deepcopy
-    if sys.version_info >= (2,7):
-        a3 = deepcopy(a)
-        for k in a.d.keys():
-            # with a deep copy, all items (not just nodes) should be copied as different objects
-            if hasattr(a.d[k], '__len__'):  # compare only collections (because for scalars we can't know if Python caches, or at least I did not find how to check that)
-                assert id(a.d[k]) != id(a3.d[k])  # could replace by equivalent: a.d[k] is not a3.d[k]
-    # check that a is unchanged after copy
-    assert a.d == {'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}
-    # test deepcopy of a nested dict with a different delimiter
-    if sys.version_info >= (2,7):
-        b = fdict({'a': {'b': 1, 'c': set([1, 2])}, 'd': 3}, delimiter='.', fastview=True)
-        bsub = deepcopy(b['a'])
-        assert bsub == b['a']
-
-def test_fdict_fastview_del():
-    '''Test fastview del'''
-    a = fdict({'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}, fastview=True)
-    a2 = a.copy()
-    # leaf deletion
-    assert set(a['a'].keys(fullpath=True, nodes=True)) == set(['a/e/', 'a/e/g/', 'a/b/', 'a/b/c', 'a/b/d', 'a/e/f', 'a/e/g/i', 'a/e/g/h'])
-    del a['a/e/g/h']
-    del a2['a']['e']['g']['h']
-    assert a.d == a2.d == {'a/e/g/': set(['a/e/g/i']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5}
-    assert 'a/e/g/h' not in list(a['a'].keys(fullpath=True, nodes=True))
-    # node deletion
-    assert set(a['a/e'].keys()) == set(a2['a']['e'].keys()) == set(['g/i', 'f'])
-    assert set(a['a/e'].keys(nodes=True)) == set(a['a']['e'].keys(nodes=True)) == set(['g/', 'g/i', 'f'])
-    del a['a/e']
-    del a2['a']['e']
-    assert a.d == a2.d == {'a/': set(['a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d'])}
-    assert a == a2 == {'a/b/c': 1, 'a/b/d': 2}
-    assert not set(a['a/e'].keys()) and not dict(a2['a']['e'])
-    assert set(a['a'].keys(fullpath=True, nodes=True)) == set(['a/b/', 'a/b/d', 'a/b/c'])
-
-def test_fdict_fastview_metadata_nested_dict():
-    '''Test fastview nodes metadata creation with nested dicts and at creation'''
-    a = fdict({'a/b': 1, 'a/c': set([1,2,3]), 'd': [1, 2, 3]}, fastview=True)
-    # add nested dict
-    a['g'] = {'h': {'i': {'j': 6}, 'k': 7}, 'l': 8}
-    assert a.d == {'g/l': 8, 'g/h/i/j': 6, 'g/h/i/': set(['g/h/i/j']), 'a/': set(['a/b', 'a/c']), 'a/c': set([1, 2, 3]), 'a/b': 1, 'g/h/': set(['g/h/k', 'g/h/i/']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7, 'd': [1, 2, 3]}
-
-def test_fdict_fastview_setitem_noconflict_delitem():
-    '''Test fdict fastview setitem replacement of singleton by nested dict and inversely + delitem'''
-    a = fdict({'a/b': 1, 'a/c': set([1,2,3]), 'd': [1, 2, 3]}, fastview=True)
-    # singleton to nested dict
-    a['d/e'] = 4
-    a['d/f'] = 5
-    assert ('d', [1, 2, 3]) not in a.viewitems(nodes=True)
-    # nested dict to singleton
-    a['a'] = 2
-    # add nested dict (and check metadata creation for each parent of nested leaves in the nested dict)
-    a['g'] = {'h': {'i': {'j': 6}, 'k': 7}, 'l': 8}
-    assert a['a'] == 2
-    # delitem singleton
-    del a['g/h/i/j']
-    assert a.d == {'a': 2, 'd/': set(['d/f', 'd/e']), 'g/l': 8, 'd/f': 5, 'd/e': 4, 'g/h/': set(['g/h/k']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7}
-    # delitem nested dict
-    del a['d']
-    assert a.d == {'a': 2, 'g/l': 8, 'g/h/': set(['g/h/k']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7}
-
-def test_fdict_fastview_delitem():
-    '''Test fdict fastview delitem'''
-    # Test leaf deletion
-    a = fdict({'a': {'b': 1, 'c': set([1, 2]), 'd': {'e': 3}}, 'f': 4}, fastview=True)
-
-    assert a.d == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/d/': set(['a/d/e']), 'a/d/e': 3, 'a/': set(['a/d/', 'a/c', 'a/b'])}
-    del a['a']['d']['e']
-    assert a.d == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/': set(['a/c', 'a/b'])}
-    del a['a/c']
-    assert a.d == {'a/b': 1, 'f': 4, 'a/': set(['a/b'])}
-    del a['a/b']
-    assert a.d == {'f': 4}
-    del a['f']
-    assert a.d == a == {}
-
-    # Test node deletion
-    a = fdict({'a': {'b': {'c': set([1, 2])}}, 'd': 3}, fastview=True)
-    a2 = a.copy()
-    assert a.d == a2.d == {'a/b/c': set([1, 2]), 'd': 3, 'a/': set(['a/b/']), 'a/b/': set(['a/b/c'])}
-    del a['a']['b']
-    del a2['a/b']
-    assert a.d == a2.d == {'d': 3}
+    a3 = a.copy()
+    b = fdict({'x': {'y': {'subelements': {'e': -2, 'f': {'g': -2}}}}})
+    a['a']['c'].update(b['x']['y'])
+    assert a.d == {'a/c/subelements/f/g': -2, 'a/c/subelements/e': -2}
+    # Test nested fdict to root fdict assigment
+    a2.update(b['x']['y'])
+    assert a2.d == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1, 'subelements/f/g': -2, 'subelements/e': -2}
+    # Test root fdict to sub fdict assignment
+    a3['a']['c'].update(b)
+    assert a3.d == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1, 'a/c/x/y/subelements/f/g': -2, 'a/c/x/y/subelements/e': -2}
+    # Test nested normal dict to sub fdict assignment
+    a = fdict()
+    a['a']['c'] = {'subelements': {'e': 1, 'f': {'g': 1}}}
+    a3 = a.copy()
+    b = {'x': {'y': {'subelements': {'e': -2, 'f': {'g': -2}}}}}
+    a['a']['c'].update(b['x']['y'])
+    assert a.d == {'a/c/subelements/f/g': -2, 'a/c/subelements/e': -2}
+    # Test root fdict to sub fdict assignment
+    a3['a']['c'].update(b)
+    assert a3.d == {'a/c/subelements/f/g': 1, 'a/c/subelements/e': 1, 'a/c/x/y/subelements/f/g': -2, 'a/c/x/y/subelements/e': -2}
 
 def test_fdict_init_fdict():
     '''Test fdict initialization with another fdict'''
@@ -452,16 +375,12 @@ def test_fdict_str_nodict():
     assert dict(a.items()) == {'a': 1}
     assert str(a) == repr(a) == "{'a': 1}"
 
-def test_fdict_extract_fastview():
-    '''Test fdict extract with fastview'''
-    a = fdict({'a': {'b': 1, 'c': [1, 2], 'd': {'e': 1}}}, fastview=True)  # fastview mode
-    asub = a['a'].extract(fullpath=True)
-    assert asub == fdict({'c': [1, 2], 'b': 1, 'd/e': 1})
-    assert asub.d == {'a/d/': set(['a/d/e']), 'a/c': [1, 2], 'a/b': 1, 'a/': set(['a/d/', 'a/c', 'a/b']), 'a/d/e': 1}
-
-    asub2 = a['a'].extract(fullpath=False)
-    assert asub2 == {'c': [1, 2], 'b': 1, 'd/e': 1}
-    assert asub2.d == {'d/': set(['d/e']), 'c': [1, 2], 'b': 1, 'd/e': 1}
+def test_fdict_todictnested():
+    '''Test to_dict_nested() conversion'''
+    a = fdict({'a/b': 1, 'a/c': set([1, 2]), 'd': 3})
+    adict = a.to_dict_nested()
+    assert adict == {'a': {'b': 1, 'c': set([1, 2])}, 'd': 3}
+    assert not isinstance(adict, fdict) and isinstance(adict, dict)
 
 def test_fdict_setitem_update_fdict():
     '''Test fdict setitem+update with another fdict or dict'''
@@ -660,6 +579,144 @@ def test_fdict_pop_popitem():
     else:
         assert False
 
+
+### FDICT FASTVIEW
+
+def test_fdict_fastview_basic():
+    '''Test fastview mode basic features'''
+    a = fdict(fastview=True)
+    a['a/b/c'] = 1
+    a['a']['b']['d'] = 2
+    a['a']['e']['f'] = 3
+    a['a']['e']['g']['h'] = 4
+    a['a']['e']['g']['i'] = 5
+
+    assert dict(a.d.items()) == dict([('a/e/g/', set(['a/e/g/i', 'a/e/g/h'])), ('a/e/f', 3), ('a/e/', set(['a/e/g/', 'a/e/f'])), ('a/', set(['a/e/', 'a/b/'])), ('a/b/c', 1), ('a/b/d', 2), ('a/b/', set(['a/b/c', 'a/b/d'])), ('a/e/g/i', 5), ('a/e/g/h', 4)])
+    assert dict(a.items()) == dict([('a/e/f', 3), ('a/b/c', 1), ('a/b/d', 2), ('a/e/g/i', 5), ('a/e/g/h', 4)])  # items() on a fastview fdict should hide the nodes (eg, 'a/b/') and only show leafs, so that behavior is comparable to a non-fastview fdict
+    assert dict(a['a']['e'].items()) == dict([('g/i', 5), ('g/h', 4), ('f', 3)])
+    assert dict(a['a']['e'].items(fullpath=True)) == dict([('a/e/g/i', 5), ('a/e/g/h', 4), ('a/e/f', 3)])  # test recursive fastview items()
+
+    assert dict(a['a']['e'].items(fullpath=True)) == dict([('a/e/g/i', 5), ('a/e/g/h', 4), ('a/e/f', 3)])
+    assert set(a['a']['e'].keys(fullpath=True)) == set(['a/e/g/i', 'a/e/g/h', 'a/e/f'])
+    assert set(a['a']['e'].values()) == set([5, 4, 3])
+    assert set(a['a'].values()) == set([1, 2, 3, 4, 5])  # use set() when we do not case about order in a list
+    assert dict(a['j'].items()) == {}  # empty nested dict
+    assert list(a['j'].keys()) == []
+    assert list(a['j'].values()) == []
+
+    # test fastview contains
+    assert 'a' in a
+    assert 'a/' in a
+    assert 'a/e/g/h' in a
+    assert 'g' in a['a']['e']
+    assert 'g' in a['a/e']
+    assert 'g/h' in a['a/e']
+    assert not 'a/e/g/x' in a
+    assert not 'x' in a
+
+    # test fastview copy
+    from copy import deepcopy
+    assert a.d == {'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}
+    a2 = a.copy()
+    for k in a.d.keys():
+        if k.endswith(a.delimiter):
+            # all nodes should be copied as different objects
+            assert id(a.d[k]) != id(a2.d[k])
+    # test deepcopy
+    if sys.version_info >= (2,7):
+        a3 = deepcopy(a)
+        for k in a.d.keys():
+            # with a deep copy, all items (not just nodes) should be copied as different objects
+            if hasattr(a.d[k], '__len__'):  # compare only collections (because for scalars we can't know if Python caches, or at least I did not find how to check that)
+                assert id(a.d[k]) != id(a3.d[k])  # could replace by equivalent: a.d[k] is not a3.d[k]
+    # check that a is unchanged after copy
+    assert a.d == {'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}
+    # test deepcopy of a nested dict with a different delimiter
+    if sys.version_info >= (2,7):
+        b = fdict({'a': {'b': 1, 'c': set([1, 2])}, 'd': 3}, delimiter='.', fastview=True)
+        bsub = deepcopy(b['a'])
+        assert bsub == b['a']
+
+def test_fdict_fastview_del():
+    '''Test fastview del'''
+    a = fdict({'a/e/g/': set(['a/e/g/i', 'a/e/g/h']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5, 'a/e/g/h': 4}, fastview=True)
+    a2 = a.copy()
+    # leaf deletion
+    assert set(a['a'].keys(fullpath=True, nodes=True)) == set(['a/e/', 'a/e/g/', 'a/b/', 'a/b/c', 'a/b/d', 'a/e/f', 'a/e/g/i', 'a/e/g/h'])
+    del a['a/e/g/h']
+    del a2['a']['e']['g']['h']
+    assert a.d == a2.d == {'a/e/g/': set(['a/e/g/i']), 'a/e/f': 3, 'a/e/': set(['a/e/g/', 'a/e/f']), 'a/': set(['a/e/', 'a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d']), 'a/e/g/i': 5}
+    assert 'a/e/g/h' not in list(a['a'].keys(fullpath=True, nodes=True))
+    # node deletion
+    assert set(a['a/e'].keys()) == set(a2['a']['e'].keys()) == set(['g/i', 'f'])
+    assert set(a['a/e'].keys(nodes=True)) == set(a['a']['e'].keys(nodes=True)) == set(['g/', 'g/i', 'f'])
+    del a['a/e']
+    del a2['a']['e']
+    assert a.d == a2.d == {'a/': set(['a/b/']), 'a/b/c': 1, 'a/b/d': 2, 'a/b/': set(['a/b/c', 'a/b/d'])}
+    assert a == a2 == {'a/b/c': 1, 'a/b/d': 2}
+    assert not set(a['a/e'].keys()) and not dict(a2['a']['e'])
+    assert set(a['a'].keys(fullpath=True, nodes=True)) == set(['a/b/', 'a/b/d', 'a/b/c'])
+
+def test_fdict_fastview_metadata_nested_dict():
+    '''Test fastview nodes metadata creation with nested dicts and at creation'''
+    a = fdict({'a/b': 1, 'a/c': set([1,2,3]), 'd': [1, 2, 3]}, fastview=True)
+    # add nested dict
+    a['g'] = {'h': {'i': {'j': 6}, 'k': 7}, 'l': 8}
+    assert a.d == {'g/l': 8, 'g/h/i/j': 6, 'g/h/i/': set(['g/h/i/j']), 'a/': set(['a/b', 'a/c']), 'a/c': set([1, 2, 3]), 'a/b': 1, 'g/h/': set(['g/h/k', 'g/h/i/']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7, 'd': [1, 2, 3]}
+
+def test_fdict_fastview_setitem_noconflict_delitem():
+    '''Test fdict fastview setitem replacement of singleton by nested dict and inversely + delitem'''
+    a = fdict({'a/b': 1, 'a/c': set([1,2,3]), 'd': [1, 2, 3]}, fastview=True)
+    # singleton to nested dict
+    a['d/e'] = 4
+    a['d/f'] = 5
+    assert ('d', [1, 2, 3]) not in a.viewitems(nodes=True)
+    # nested dict to singleton
+    a['a'] = 2
+    # add nested dict (and check metadata creation for each parent of nested leaves in the nested dict)
+    a['g'] = {'h': {'i': {'j': 6}, 'k': 7}, 'l': 8}
+    assert a['a'] == 2
+    # delitem singleton
+    del a['g/h/i/j']
+    assert a.d == {'a': 2, 'd/': set(['d/f', 'd/e']), 'g/l': 8, 'd/f': 5, 'd/e': 4, 'g/h/': set(['g/h/k']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7}
+    # delitem nested dict
+    del a['d']
+    assert a.d == {'a': 2, 'g/l': 8, 'g/h/': set(['g/h/k']), 'g/': set(['g/l', 'g/h/']), 'g/h/k': 7}
+
+def test_fdict_fastview_delitem():
+    '''Test fdict fastview delitem'''
+    # Test leaf deletion
+    a = fdict({'a': {'b': 1, 'c': set([1, 2]), 'd': {'e': 3}}, 'f': 4}, fastview=True)
+
+    assert a.d == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/d/': set(['a/d/e']), 'a/d/e': 3, 'a/': set(['a/d/', 'a/c', 'a/b'])}
+    del a['a']['d']['e']
+    assert a.d == {'a/c': set([1, 2]), 'a/b': 1, 'f': 4, 'a/': set(['a/c', 'a/b'])}
+    del a['a/c']
+    assert a.d == {'a/b': 1, 'f': 4, 'a/': set(['a/b'])}
+    del a['a/b']
+    assert a.d == {'f': 4}
+    del a['f']
+    assert a.d == a == {}
+
+    # Test node deletion
+    a = fdict({'a': {'b': {'c': set([1, 2])}}, 'd': 3}, fastview=True)
+    a2 = a.copy()
+    assert a.d == a2.d == {'a/b/c': set([1, 2]), 'd': 3, 'a/': set(['a/b/']), 'a/b/': set(['a/b/c'])}
+    del a['a']['b']
+    del a2['a/b']
+    assert a.d == a2.d == {'d': 3}
+
+def test_fdict_extract_fastview():
+    '''Test fdict extract with fastview'''
+    a = fdict({'a': {'b': 1, 'c': [1, 2], 'd': {'e': 1}}}, fastview=True)  # fastview mode
+    asub = a['a'].extract(fullpath=True)
+    assert asub == fdict({'c': [1, 2], 'b': 1, 'd/e': 1})
+    assert asub.d == {'a/d/': set(['a/d/e']), 'a/c': [1, 2], 'a/b': 1, 'a/': set(['a/d/', 'a/c', 'a/b']), 'a/d/e': 1}
+
+    asub2 = a['a'].extract(fullpath=False)
+    assert asub2 == {'c': [1, 2], 'b': 1, 'd/e': 1}
+    assert asub2.d == {'d/': set(['d/e']), 'c': [1, 2], 'b': 1, 'd/e': 1}
+
 def test_fdict_fastview_pop_popitem():
     '''Test fdict with fastview pop and popitem'''
     # fastview mode
@@ -687,8 +744,11 @@ def test_fdict_fastview_pop_popitem():
     else:
         assert False
 
-def test_fdict_nodel_mode():
-    '''Test fdict nodel mode'''
+
+### FDICT NODEL
+
+def test_fdict_nodel_basic():
+    '''Test fdict nodel mode basic tests'''
     # Test view* methods in nodel mode
     a = fdict({'a': {'b': 1, 'c': 2, 'd': {'e': 3}}, 'f': 4}, nodel=True)
     assert set(a.keys()) == set(['a/c', 'a/b', 'a/d/e', 'f'])
@@ -750,6 +810,9 @@ def test_fdict_nodel_mode():
     assert a == b
     assert a == c
     assert not (a == d) and a != d  # test inequality
+
+
+### SFDICT
 
 def test_sfdict_basic():
     '''sfdict: basic tests'''
