@@ -19,6 +19,8 @@ Easy out-of-core computing with recursive data structures in Python with a drop-
 
 ``Out: {'a/c': [2, 3], 'd': 4, 'a/b': 1}``
 
+Note: if you try the code above, the output may be ordered differently, but the values should be the same.
+
 Nested dicts will be converted on-the-fly:
 
 .. code:: python
@@ -27,7 +29,7 @@ Nested dicts will be converted on-the-fly:
 
 ``Out: {'e/f/g/h': 5, 'a/c': [2, 3], 'd': 4, 'a/b': 1}``
 
-And it can be converted back to a dict at any time:
+And it can be converted back to a standard dict at any time:
 
 .. code:: python
 
@@ -35,7 +37,7 @@ And it can be converted back to a dict at any time:
 
 ``Out: {'a': {'c': [2, 3], 'b': 1}, 'e': {'f': {'g': {'h': 5}}}, 'd': 4}``
 
-To store all items on disk (out-of-core computing), use ``sfdict``, a subclass of ``fdict`` using ``shelve`` internally:
+To store all items on disk (out-of-core computing), use ``sfdict``, a subclass of ``fdict`` using the native Python module ``shelve`` internally:
 
 .. code:: python
 
@@ -84,14 +86,15 @@ This works:
     print(d)
 
 ``{'a': -1, 'b/c': 2}``
+
 ``{'a/d': 3, 'a/e': 4, 'b/c': 2}``
 
-But this does NOT work as expected:
+But the following does NOT work as expected:
 
 .. code:: python
 
     d = fdict({'a': 1, 'b': {'c': 2}})
-    d['b'] = -1
+    d['b'] = -1  # setting -1 to a node should delete children leaves/nodes, but here we get both a -1 value for the b node and still keep the c child leaf!
     print(d)
 
 ``{'a': 1, 'b': -1, 'b/c': 2}``
@@ -121,7 +124,7 @@ To circumvent this pitfall, two things were implemented:
 
     * ``fastview=True`` argument can be used when creating a fdict to enable the FastView mode. This mode will imply a small memory/space overhead to store nodes and also will increase complexity of setitem on nodes to O(m*l) where m is the number of parents of the current leaf added, and l the number of leaves added (usually one but if you set a dict it will be converted to multiple leaves). On the other hand, it will make items, keys, values, view* and other nodes operations methods as fast as with a ``dict`` by using lookup tables to access direct children directly, which was O(n) where n was the whole list of items at any level in the fdict. It is possible to convert a non-fastview fdict to a fastview fdict, just by supplying it as the initialization dict.
 
-    * ``nodel=True`` argument activates a special mode where delitem is nullified, but key lookup (contains test) time is O(1) for nodes. With standard ``fdict``, contains test is O(1) only for leaves and O(n) for nodes because it calls ``viewkeys()``. With this mode, empty nodes metadata are created and so lookup for nodes existence is very fast, but at the expense that deletion is not possible because it would make the database incoherent (i.e. nodes without leaf). However, setitem to replace a leaf will still work. This mode is particularly useful for fast database building, and then you can initialize a standard fdict with your finalized nodel fdict, which will then allow you to delitem.
+    * ``nodel=True`` argument activates a special mode where delitem is nullified, but key lookup (eg, ``in`` contains test) time is O(1) for nodes. With standard ``fdict``, ``in`` contains test is O(1) only for leaves and O(n) for nodes because it calls ``viewkeys()``. With this mode, empty nodes metadata are created and so lookup for nodes existence is very fast, but at the expense that deletion is not possible because it would make the database incoherent (i.e. nodes without leaf). However, setitem to replace a leaf will still work. This mode is particularly useful for fast database building, and then you can initialize a standard fdict with your finalized nodel fdict, which will then allow you to delitem.
 
 Thus, if you want to do data exploration on a ``fdict``, you can use either of these two approaches to speed up your exploration to a reasonable time, with performances close to a ``dict``. In practice, ``extract`` is better if you have lots of items per nesting level, whereas ``fastview`` might be better if you have a very nested structure with few items per level but lots of levels.
 
@@ -133,7 +136,7 @@ In any case, this module is primarily meant to do quick prototypes of bigdata da
 
 A good example is the retrieval of online data: in this case, you care less about the data structure performance since it is negligible compared to network bandwidth and I/O. Then, when you have the data, you can rework it to convert to another type of database with a flat schema (by extracting only the fields you are interested in).
 
-Also you can convert a ``fdict`` or ``sfdict`` to a flat ``dict`` using the ``to_dict()`` method, or to a nested (natural) ``dict`` using ``to_dict_nested()``, you will then get a standard ``dict`` stored in RAM that you can access at full speed, or use as an input to initialize another type of out-of-core database.
+Also you can convert a ``fdict`` or ``sfdict`` to a flattened ``dict`` using the ``to_dict()`` method (ie, all items are leaves, keys are the full paths in the tree), or to a nested (natural) ``dict`` using ``to_dict_nested()``, you will then get a standard ``dict`` stored in RAM that you can access at full speed, or use as an input to initialize another type of out-of-core database.
 
 Documentation
 -------------
@@ -254,7 +257,9 @@ Returns:
 LICENCE
 -------------
 
-This library is licensed under the MIT License. It was initially made for the Coma Science Group - GIGA Consciousness - CHU de Liege, Belgium.
+This library is licensed under the MIT License and was created by Stephen Karl Larroque.
+
+It was initially made for the Coma Science Group - GIGA Consciousness - CHU de Liege, Belgium, as part of the paneuropean CENTER-TBI project.
 
 Included are the ``flatkeys`` function by `bfontaine <https://github.com/bfontaine/flatkeys>`__  and ``_count_iter_items`` by `zuo <https://stackoverflow.com/a/15112059/1121352>`__.
 

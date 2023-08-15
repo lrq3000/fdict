@@ -1,3 +1,9 @@
+# This Makefile runs tests and builds the package to upload to pypi
+# To use this Makefile, pip install py3make
+# then do: pymake <command>
+# or: python.exe -m pymake <command>
+# You also need to pip install also other required modules: `pip install flake8 coverage twine pytest pytest-cov validate-pyproject[all] pytest-xdist rstcheck` , or simply `pip install --editable .[test,testmeta]`
+#
 # IMPORTANT: for compatibility with `python setup.py make [alias]`, ensure:
 # 1. Every alias is preceded by @[+]make (eg: @make alias)
 # 2. A maximum of one @make alias or command per line
@@ -13,62 +19,47 @@
 #	python setup.py install
 #```
 
-.PHONY:
-	alltests
-	all
-	flake8
-	test
-	testnose
-	testsetup
-	testcoverage
-	testperf
-	testtimer
-	distclean
-	coverclean
-	prebuildclean
-	clean
-	installdev
-	install
-	build
-	pypimeta
-	pypi
-	none
-
 help:
-	@python setup.py make
+	@+make -p
 
 alltests:
 	@+make testcoverage
-	@+make testperf
-	@+make flake8
 	@+make testsetup
 
 all:
-	@+make alltests
-	@+make build
+	@make alltests
+	@make build
 
-flake8:
-	@+flake8 --max-line-length=80 --count --statistics --exit-zero -j 8 --exclude .asv .
+prebuildclean:
+	@+python -c "import shutil; shutil.rmtree('build', True)"
+	@+python -c "import shutil; shutil.rmtree('dist', True)"
+	@+python -c "import shutil; shutil.rmtree('fdict.egg-info', True)"  # very important to delete egg-info before any new build or pip install, otherwise may cause an error that multiple egg-info folders are present, or it may build using old definitions
+
+coverclean:
+	@+python -c "import os; os.remove('.coverage') if os.path.exists('.coverage') else None"
+	@+python -c "import shutil; shutil.rmtree('__pycache__', True)"
+	@+python -c "import shutil; shutil.rmtree('tests/__pycache__', True)"
 
 test:
-	tox --skip-missing-interpreters
+	#tox --skip-missing-interpreters
+    pytest
 
-testnose:
-	nosetests fdict -d -v
+testpyproject:
+	validate-pyproject pyproject.toml -v
 
-testsetup:
-	python setup.py check --restructuredtext --strict
-	python setup.py make none
+testsetuppost:
+	twine check "dist/*"
+
+testrst:
+	rstcheck README.rst
 
 testcoverage:
-	@make coverclean
-	nosetests fdict --with-coverage --cover-package=fdict --cover-erase --cover-min-percentage=80 --ignore-files="tests_perf\.py" -d -v
+	@+make coverclean
+	coverage run --branch -m pytest -v
+	coverage report -m
 
-testperf:  # do not use coverage (which is extremely slow)
-	nosetests fdict/tests/tests_perf.py -d -v
-
-testtimer:
-	nosetests fdict --with-timer -d -v
+testmalloc:
+	@+python -X dev -X tracemalloc=5 -m pytest
 
 testasv:
 	asv run -j 8 HEAD~3..HEAD
@@ -82,45 +73,34 @@ viewasv:
 	asv publish
 	asv preview
 
-distclean:
-	@+make coverclean
-	@+make prebuildclean
-	@+make clean
-prebuildclean:
-	@+python -c "import shutil; shutil.rmtree('build', True)"
-	@+python -c "import shutil; shutil.rmtree('dist', True)"
-	@+python -c "import shutil; shutil.rmtree('fdict.egg-info', True)"
-coverclean:
-	@+python -c "import os; os.remove('.coverage') if os.path.exists('.coverage') else None"
-clean:
-	@+python -c "import os; import glob; [os.remove(i) for i in glob.glob('*.py[co]')]"
-	@+python -c "import os; import glob; [os.remove(i) for i in glob.glob('fdict/*.py[co]')]"
-	@+python -c "import os; import glob; [os.remove(i) for i in glob.glob('fdict/tests/*.py[co]')]"
-	@+python -c "import os; import glob; [os.remove(i) for i in glob.glob('fdict/examples/*.py[co]')]"
-
 installdev:
-	python setup.py develop --uninstall
-	python setup.py develop
+	@+make prebuildclean
+	# Should work for both Py2 and Py3, --editable option and isolation builds work with both pyproject.toml and setup.cfg
+	@+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple --upgrade --editable .[test,testmeta] --verbose --use-pep517
 
 install:
-	python setup.py install
+	@+make prebuildclean
+	@+python -m pip install --upgrade . --verbose --use-pep517
 
 build:
-	@make prebuildclean
-	python setup.py sdist --formats=gztar,zip bdist_wheel
-	python setup.py bdist_wininst
+	# requires `pip install build`
+	@+make testrst
+	@+make prebuildclean
+	@+make testpyproject
+	@+python -sBm build  # do NOT use the -w flag, otherwise only the wheel will be built, but we need sdist for source distros such as Debian and Gentoo!
+	@+make testsetuppost
 
-pypimeta:
-	python setup.py register
+buildwheelhouse:
+	cibuildwheel --platform auto
 
-pypi:
+upload:
 	twine upload dist/*
 
 buildupload:
-	@make testsetup
-	@make build
-	@make pypimeta
-	@make pypi
+	@+make testsetup
+	@+make build
+	@+make pypimeta
+	@+make pypi
 
 none:
 	# used for unit testing

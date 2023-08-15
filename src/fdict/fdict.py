@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # fdict
-# Copyright (C) 2017 Larroque Stephen
+# Copyright (C) 2017-2023 Larroque Stephen
 #
 # Licensed under the MIT License (MIT)
 #
@@ -213,7 +213,7 @@ class fdict(dict):
             prefix, d = dicts.pop()
             for k, v in d.items():
                 k_s = str(k)
-                if isinstance(v, collections.Mapping):
+                if isinstance(v, collections.abc.Mapping):
                     dicts.append(("%s%s%s" % (prefix, k_s, sep), v))
                 else:
                     k_ = prefix + k_s if prefix else k
