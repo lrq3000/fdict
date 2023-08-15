@@ -889,6 +889,10 @@ class sfdict(fdict):
         Returns
         -------
         out  : dict-like object.
+
+        Notes
+        -----
+        On Linux and MacOS, make sure to only open once each database file, there cannot be two handles pointing to the same file, this will cause a "gdm.error: resource temporarily unavailable" exception!
         '''
         # Initialize specific arguments for sfdict
         if 'filename' in kwargs and kwargs['filename']:

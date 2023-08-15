@@ -249,13 +249,20 @@ Parameters:
     can be found on your system). Dumb DBM should work on
     any platform, it is native to Python.
     [default : False]
+* readonly : bool, optional
+    Open the database as read-only.
+    [default : False]
 
 Returns:
 
 * out  : dict-like object.
 
+Notes:
+
+* On Linux and MacOS, make sure to only open once each database file, there cannot be two handles pointing to the same file, this will cause a "gdm.error: resource temporarily unavailable" exception!
+
 LICENCE
--------------
+-------
 
 This library is licensed under the MIT License and was created by Stephen Karl Larroque.
 
