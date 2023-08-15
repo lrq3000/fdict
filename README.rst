@@ -1,9 +1,9 @@
 fdict
 =====
 
-|PyPI-Status| |PyPI-Versions|
+|PyPI-Status| |PyPI-Versions| |PyPI-Downloads|
 
-|Build-Status| |Branch-Coverage-Status| |Codacy-Grade|
+|Build-Status| |Coverage| |Codacy-Grade|
 
 |LICENCE|
 
@@ -274,7 +274,7 @@ Included are the ``flatkeys`` function by `bfontaine <https://github.com/bfontai
    :target: https://pypi.python.org/pypi/fdict
 .. |PyPI-Versions| image:: https://img.shields.io/pypi/pyversions/fdict.svg
    :target: https://pypi.python.org/pypi/fdict
-.. |Branch-Coverage-Status| image:: https://codecov.io/github/lrq3000/fdict/coverage.svg?branch=master
+.. |Coverage| image:: https://codecov.io/github/lrq3000/fdict/coverage.svg?branch=master
    :target: https://codecov.io/github/lrq3000/fdict?branch=master
-.. |Codacy-Grade| image:: https://api.codacy.com/project/badge/Grade/3f965571598f44549c7818f29cdcf177
-   :target: https://www.codacy.com/app/lrq3000/fdict?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=lrq3000/fdict&amp;utm_campaign=Badge_Grade
+.. |Codacy-Grade| image:: https://app.codacy.com/project/badge/Grade/1759af0d55e34c88a4435b56b08cc009
+   :target: https://app.codacy.com/gh/lrq3000/fdict/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade&amp;utm_medium=referral&amp;utm_content=lrq3000/fdict&amp;utm_campaign=Badge_Grade
