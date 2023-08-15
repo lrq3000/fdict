@@ -863,12 +863,13 @@ def test_sfdict_basic():
     assert g == {'a': 3, 'b/c': set([1, 3, 4]), 'd': {}} # empty dicts are stripped out before comparison
     assert g['b'].filename == g.filename # check that subdicts also share the same filename (parameters propagation)
     g.sync()  # commit the changes
+    g2 = g.to_dict()  # copy before close, to test later
+    g.close()  # close database (without deleting), otherwise we cannot reopen it, there will be a lock. TODO: if there is ever an issue, maybe implement a mutex, but it needs to be managed manually by user, otherwise it will be toooo slow to do it automatically on each sync, I tried: https://stackoverflow.com/questions/52381091/resource-temporarily-unavailable-on-python-shelve-open
 
     # Sfdict reloading test
     h = sfdict(filename='testshelf')
-    assert h == g
-    g.close()
-    h.close(delete=True)
+    assert h == g2
+    h.close(delete=True)  # close database with deletion, we are done
 
 def test_sfdict_dictinit():
     '''Test sfdict initialization with a dict'''
@@ -900,11 +901,14 @@ def test_sfdict_autosync():
     g['d'] = 4  # trigger the autosync on setitem
     assert g == {'a/b': set([1, 2, 3]), 'd': 4}
     filename = g.get_filename()
-    # try to access the same shelve before closing/syncing it
+    # Reload the same shelve before closing/syncing it
+    g2 = g.to_dict()  # copy before close, to test later
+    g.close()  # close database (without deleting), otherwise we cannot reopen it, there will be a lock
+
     h = sfdict(filename=filename)
+    assert h == g2
     assert h['a/b'] == set([1, 2, 3])
     assert (h['a/b/c'] == 3) == False
-    g.close()
     h.close(delete=True)
     # Without autosync, the change is lost
     g = sfdict(d={'a': {'b': set([1, 2])}}, autosync=False)
