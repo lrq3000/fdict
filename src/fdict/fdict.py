@@ -873,7 +873,8 @@ class sfdict(fdict):
         writeback : bool, optional
             Activates shelve writeback option. If False, only assignments
             will allow committing changes of leaf collections. See shelve
-            documentation.
+            documentation. Will be disabled if readonly is True (necessary otherwise
+            exception when calling close()).
             [default : True]
         forcedumbdbm : bool, optional
             Force the use of the Dumb DBM implementation to manage
@@ -881,6 +882,11 @@ class sfdict(fdict):
             exception because not any other implementation of anydbm
             can be found on your system). Dumb DBM should work on
             any platform, it is native to Python.
+            [default : False]
+        readonly : bool, optional
+            Open the database as read-only. This is necessary for some tests
+            to check the internal state of a stored database beyond the autosync
+            process.
             [default : False]
         Returns
         -------
@@ -916,46 +922,54 @@ class sfdict(fdict):
         else:
             self.forcedumbdbm = False
 
+        # Do we open the database in read-only mode, or do we allow write permission (and create it if necessary = c mode)?
+        self.readonly = ('readonly' in kwargs)
+        if self.readonly:
+            dbflag = 'r'
+        else:
+            dbflag = 'c'
+
         # Initialize parent class
         super(sfdict, self).__init__(*args, **kwargs)
 
-        # Initialize the out-of-core shelve database file
+        # Initialize/create/reopen the out-of-core shelve database file
         if not self.rootpath: # If rootpath, this is an internal call, we just reuse the input dict
             # Else it is an external call, we reuse the provided dict but we make a copy and store in another file, or there is no provided dict and we create a new one
             try:
                 if self.forcedumbdbm:
                     # Force the use of dumb dbm even if slower
                     raise ImportError('pass')
-                d = shelve.open(filename=self.filename, flag='c', protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
+                d = shelve.open(filename=self.filename, flag=dbflag, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback and (not self.readonly))
                 self.usedumbdbm = False
             except (ImportError, IOError) as exc:
                 if 'pass' in str(exc).lower() or '_bsddb' in str(exc).lower() or 'permission denied' in str(exc).lower():
                     # Pypy error, we workaround by using a fallback to anydbm: dumbdbm
                     if PY3:  # pragma: no cover
                         from dbm import dumb
-                        db = dumb.open(self.filename, 'c')
+                        db = dumb.open(self.filename, dbflag)
                     else:
                         import dumbdbm
-                        db = dumbdbm.open(self.filename, 'c')
+                        db = dumbdbm.open(self.filename, dbflag)
                     # Open the dumb db as a shelf
-                    d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback)
+                    d = shelve.Shelf(db, protocol=PICKLE_HIGHEST_PROTOCOL, writeback=self.writeback and (not self.readonly))
                     self.usedumbdbm = True
                 else:  # pragma: no cover
                     raise
 
-            # Initialize the shelve with the internal dict preprocessed by the parent class fdict
+            # Initialize the shelve with the internal (in-memory) dict preprocessed by the parent class fdict
             d.update(self.d)
             # Then update self.d to use the shelve instead
             del self.d
             self.d = d
-            self.d.sync()
+            if not self.readonly:
+                self.d.sync()
 
         # Call compatibility layer
         self._viewkeys, self._viewvalues, self._viewitems = self._getitermethods(self.d)
 
     def __setitem__(self, key, value):
         super(sfdict, self).__setitem__(key, value)
-        if self.autosync:
+        if self.autosync and not self.readonly:
             # Commit pending changes everytime we set an item
             self.sync()
 
@@ -964,12 +978,13 @@ class sfdict(fdict):
 
     def sync(self):
         '''Commit pending changes to file'''
-        self.d.sync()
+        if not self.readonly:
+            self.d.sync()
 
     def close(self, delete=False):
         '''Commit pending changes to file and close it'''
         self.d.close()
-        if delete:
+        if delete and not self.readonly:
             try:
                 filename = self.get_filename()
                 if not self.usedumbdbm:
