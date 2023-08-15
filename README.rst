@@ -267,14 +267,14 @@ Included are the ``flatkeys`` function by `bfontaine <https://github.com/bfontai
 .. |Build-Status| image:: https://github.com/lrq3000/fdict/actions/workflows/ci-build.yml/badge.svg?event=push
    :target: https://github.com/lrq3000/fdict/actions/workflows/ci-build.yml
 .. |LICENCE| image:: https://img.shields.io/pypi/l/fdict.svg
-   :target: https://raw.githubusercontent.com/lrq3000/fdict/master/LICENCE
+   :target: https://raw.githubusercontent.com/lrq3000/fdict/main/LICENCE
 .. |PyPI-Status| image:: https://img.shields.io/pypi/v/fdict.svg
    :target: https://pypi.python.org/pypi/fdict
 .. |PyPI-Downloads| image:: https://img.shields.io/pypi/dm/fdict.svg
    :target: https://pypi.python.org/pypi/fdict
 .. |PyPI-Versions| image:: https://img.shields.io/pypi/pyversions/fdict.svg
    :target: https://pypi.python.org/pypi/fdict
-.. |Coverage| image:: https://codecov.io/github/lrq3000/fdict/coverage.svg?branch=master
-   :target: https://codecov.io/github/lrq3000/fdict?branch=master
+.. |Coverage| image:: https://codecov.io/github/lrq3000/fdict/coverage.svg?branch=main
+   :target: https://codecov.io/github/lrq3000/fdict?branch=main
 .. |Codacy-Grade| image:: https://app.codacy.com/project/badge/Grade/1759af0d55e34c88a4435b56b08cc009
-   :target: https://app.codacy.com/gh/lrq3000/fdict/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade&amp;utm_medium=referral&amp;utm_content=lrq3000/fdict&amp;utm_campaign=Badge_Grade
+   :target: https://app.codacy.com/gh/lrq3000/fdict/dashboard
