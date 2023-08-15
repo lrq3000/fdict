@@ -274,7 +274,7 @@ Included are the ``flatkeys`` function by `bfontaine <https://github.com/bfontai
    :target: https://pypi.python.org/pypi/fdict
 .. |PyPI-Versions| image:: https://img.shields.io/pypi/pyversions/fdict.svg
    :target: https://pypi.python.org/pypi/fdict
-.. |Coverage| image:: https://codecov.io/github/lrq3000/fdict/coverage.svg?branch=main
-   :target: https://codecov.io/github/lrq3000/fdict?branch=main
+.. |Coverage| image:: https://codecov.io/github/lrq3000/fdict/graph/badge.svg?token=aWhYl4LsAH 
+   :target: https://codecov.io/github/lrq3000/fdict
 .. |Codacy-Grade| image:: https://app.codacy.com/project/badge/Grade/1759af0d55e34c88a4435b56b08cc009
    :target: https://app.codacy.com/gh/lrq3000/fdict/dashboard
