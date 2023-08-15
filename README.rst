@@ -264,8 +264,8 @@ It was initially made for the Coma Science Group - GIGA Consciousness - CHU de L
 Included are the ``flatkeys`` function by `bfontaine <https://github.com/bfontaine/flatkeys>`__  and ``_count_iter_items`` by `zuo <https://stackoverflow.com/a/15112059/1121352>`__.
 
 
-.. |Build-Status| image:: https://travis-ci.org/lrq3000/fdict.svg?branch=master
-   :target: https://travis-ci.org/lrq3000/fdict
+.. |Build-Status| image:: https://github.com/lrq3000/fdict/actions/workflows/ci-build.yml/badge.svg?event=push
+   :target: https://github.com/lrq3000/fdict/actions/workflows/ci-build.yml
 .. |LICENCE| image:: https://img.shields.io/pypi/l/fdict.svg
    :target: https://raw.githubusercontent.com/lrq3000/fdict/master/LICENCE
 .. |PyPI-Status| image:: https://img.shields.io/pypi/v/fdict.svg
