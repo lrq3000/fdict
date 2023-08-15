@@ -884,9 +884,7 @@ class sfdict(fdict):
             any platform, it is native to Python.
             [default : False]
         readonly : bool, optional
-            Open the database as read-only. This is necessary for some tests
-            to check the internal state of a stored database beyond the autosync
-            process.
+            Open the database as read-only.
             [default : False]
         Returns
         -------

@@ -1,4 +1,6 @@
 # Unit testing of fdict
+import pytest
+
 from fdict import fdict, sfdict
 
 import ast
@@ -915,8 +917,9 @@ def test_sfdict_autosync():
     assert g['a/b'] == set([1, 2, 3])
     g['d'] = 4
     filename = g.get_filename()
+    g.close()  # close to release file lock
     # The tricky part: reload same database to test it. This is to use an external observer that will bypass autosync and in-memory internal states of the fdict, to really check what is stored on-disk in the shelf.
-    h = sfdict(filename=filename, readonly=True)  # To avoid file lock on Linux and MacOS, we open in readonly mode.
+    h = sfdict(filename=filename, readonly=True)  # We use readonly mode to try to avoid the file lock, but it does not help, we need to close first
     if not '__pypy__' in sys.builtin_module_names:
         # pypy seems to always commit the changes, even without sync!
         # also happens on Travis, I don't know why, maybe on some linuxes the commits are instantaneous?
@@ -925,13 +928,17 @@ def test_sfdict_autosync():
         except AssertionError:
             pass
     h.close()
-    # Now we sync the writeable database, to commit manually the changes
+    # Now we reopen the shelf in write mode, redo the same assignments as before, but this time we sync it manually, to commit manually the changes
+    g = sfdict(filename=filename, autosync=False)
+    g['a']['b'].add(3)
+    assert g['a/b'] == set([1, 2, 3])
+    g['d'] = 4
     g.sync()
+    g.close()  # close to release file lock
     # And we reopen, after syncing g, in readonly mode with another handle to check the content with an external observer
-    h = sfdict(filename=filename, readonly=True)
+    h = sfdict(filename=filename)
     assert h == {'a/b': set([1, 2, 3]), 'd': 4}  # then we find the data is there!
-    h.close()
-    g.close(delete=True)
+    h.close(delete=True)
 
 def test_sfdict_writeback():
     '''Test sfdict writeback'''
@@ -955,4 +962,28 @@ def test_sfdict_writeback():
     assert id(g.d) == id(g['d'].d)
     assert g['a/b'] == set([1, 2, 3])
     assert g['d']['e'] == set([1, 2, 3])
+    g.close(delete=True)
+
+def test_sfdict_readonly():
+    '''Test sfdict readonly'''
+    ## TEST1: With autosync, updating a nested object is saved to disk
+    g = sfdict(d={'a': {'b': set([1, 2])}}, autosync=True)
+    assert 'shelve' in str(type(g.d)) or 'instance' in str(type(g.d))  # check the internal dict is a db shelve
+    g['a']['b'].add(3)
+    assert g['a/b'] == set([1, 2, 3])
+    g['d'] = 4  # trigger the autosync on setitem
+    assert g == {'a/b': set([1, 2, 3]), 'd': 4}
+    filename = g.get_filename()
+    g2 = g.to_dict()  # copy before close, to test later
+    g.close()  # close database (without deleting), otherwise we cannot reopen it, there will be a lock
+    # Reload the same shelve
+    h = sfdict(filename=filename, readonly=True, writeback=True)  # writeback should be nullified by readonly!
+    assert h == g2
+    # Check if we really cannt write, it's really opened in read-only mode
+    with pytest.raises(OSError) as excinfo:
+        h['z'] = 1
+    # Test closing h, even if writeback is True (it should auto detect and disable writeback)
+    h.close()
+    # Delete test file
+    g = sfdict(filename=filename)
     g.close(delete=True)
